@@ -1,6 +1,6 @@
 // Endereço base da API: usa variável de ambiente (EXPO_PUBLIC_API_URL) se estiver definida.
 // Caso contrário, usa o IP local padrão.
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.100:5000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://46.202.147.58';
 
 /**
  * Função genérica de requisição que intercepta todas as chamadas para logar e tratar erros.
