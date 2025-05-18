@@ -3,10 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { formatarDataBR, aplicarMascaraValor } from '../../utils/util';
+import { formatarDataBR, aplicarMascaraValor, formatarMoeda } from '../../utils/util';
 
 export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSave, cartoes, getCartaoById }) {
     const [showDatePicker, setShowDatePicker] = useState(false);
+
+    const [valorDisplay, setValorDisplay] = useState('0.00');
 
     const handleDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
@@ -94,10 +96,11 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSa
                                 style={styles.input}
                                 placeholder="Valor"
                                 keyboardType="numeric"
-                                value={form.valor}
+                                value={valorDisplay}
                                 onChangeText={(text) => {
-                                    const formatado = aplicarMascaraValor(text);
-                                    setForm(f => ({ ...f, valor: formatado }));
+                                    const {display, backend} = formatarMoeda(text);
+                                    setForm(f => ({ ...f, valor: backend }));
+                                    setValorDisplay(display);
                                 }}
                             />
                         </View>

@@ -11,5 +11,24 @@ export const aplicarMascaraValor = (texto) => {
   const valor = (parseInt(somenteNumeros || '0', 10) / 100).toFixed(2);
 
   // Retorna formatado com separador BR
-  return `R$ ${valor.replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
+  return `R$ ${valor.replace(/\B(?=(\d{3})+(?!\d))/g, '.')}`;
 };
+
+export const formatarMoeda = (text) => {
+  let onlyNumbers = text.replace(/\D/g, '');
+  let number = parseInt(onlyNumbers, 10);
+
+  if (isNaN(number)) number = 0;
+
+  const backendValue = (number / 100).toFixed(2);
+
+  let formatted = backendValue
+    .replace('.', ',')
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+
+  return {
+    display: 'R$' + formatted,
+    backend: backendValue,
+  };
+};
+
