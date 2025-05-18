@@ -8,7 +8,9 @@ import useContas from '../hooks/useContas';
 import useCartoes from '../hooks/useCartoes';
 import ModalGerenciarCartao from '../components/modal/ModalGerenciarCartao';
 import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
-
+import ModalContaAcoes from '../components/modal/ModalContaAcoes';
+import { deleteDados } from '../utils/services'
+import { msgToast } from '../utils/util';
 
 function CustomCheckBox({ value, onValueChange }) {
     return (
@@ -50,7 +52,6 @@ export default function App() {
         carregarCartoes();
     }, []);
 
-
     const [form, setForm] = useState({
         nome: '',
         vencimento: '',
@@ -67,6 +68,41 @@ export default function App() {
         salvarConta,
         getCartoes,
     } = useContas(ano, mes, form, setForm, setModalNovaContaVisible);
+
+    /*Trata ModalContaAcoes */
+    const [modalAcoesVisible, setModalAcoesVisible] = useState(false);
+    const [contaSelecionada, setContaSelecionada] = useState(null);
+
+    const handleLongPress = (conta) => {
+        setContaSelecionada(conta);
+        setModalAcoesVisible(true);
+    };
+
+    const excluirConta = async () => {
+        try {
+            await deleteDados('/delete_conta/' + contaSelecionada.id);
+            msgToast('Conta excluída com sucesso!');
+            //Alert.alert('Sucesso', 'Conta excluída com sucesso!');
+            loadContas(); // atualiza a lista
+            setModalAcoesVisible(false);
+        } catch (err) {
+            Alert.alert('Erro', 'Erro ao excluir a conta');
+        }
+    };
+
+    const editarConta = () => {
+        setForm({
+            nome: contaSelecionada.nome,
+            vencimento: contaSelecionada.vencimento,
+            valor: contaSelecionada.valor.toString(),
+            categoria: contaSelecionada.categoria,
+            tipo_cartao: contaSelecionada.tipo_cartao
+        });
+        setModalNovaContaVisible(true);
+        setModalAcoesVisible(false);
+    };
+
+    /*Fim ModalContaAcoes */
 
     return (
         <ScrollView style={styles.container}>
@@ -116,7 +152,12 @@ export default function App() {
                     <Text style={styles.cabecalho}>Paga</Text>
                 </View>
                 {contas.map(conta => (
-                    <View key={conta.id} style={styles.linha}>
+                    <TouchableOpacity
+                        key={conta.id}
+                        style={styles.linha}
+                        onLongPress={() => handleLongPress(conta)} // ← aqui
+                        delayLongPress={500}
+                    >
                         <Text style={styles.coluna}>{conta.nome}</Text>
                         <Text style={styles.coluna}>{conta.vencimento}</Text>
                         <Text style={styles.coluna}>R$ {conta.valor.toFixed(2).replace('.', ',')}</Text>
@@ -124,8 +165,9 @@ export default function App() {
                             value={conta.paga}
                             onValueChange={(novoValor) => marcarComoPaga(conta.id, novoValor)}
                         />
-                    </View>
+                    </TouchableOpacity>
                 ))}
+
             </View>
 
             <View>
@@ -172,6 +214,15 @@ export default function App() {
                 }}
                 loadContas={loadContas} // Passa a função loadContas para o ModalGerenciarLimite
             />
+
+            <ModalContaAcoes
+                visible={modalAcoesVisible}
+                contaSelecionada={contaSelecionada}
+                onClose={() => setModalAcoesVisible(false)}
+                onEditar={editarConta}
+                onExcluir={excluirConta}
+            />
+
         </ScrollView>
     );
 }

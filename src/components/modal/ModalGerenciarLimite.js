@@ -98,7 +98,7 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
             <View style={styles.overlay}>
                 <View style={styles.container}>
                     <TouchableOpacity onPress={onClose} style={styles.fechar}>
-                        <Text style={{ fontSize: 20 }}>X</Text>
+                        <Text style={styles.closeText}>X</Text>
                     </TouchableOpacity>
                     <Text style={styles.title}>Gerenciar Limite</Text>
 
@@ -237,5 +237,9 @@ const styles = StyleSheet.create({
     btnSalvarText: {
         color: 'white',
         fontWeight: 'bold',
+    },
+    closeText: {
+        fontSize: 20,
+        color: '#333'
     },
 });

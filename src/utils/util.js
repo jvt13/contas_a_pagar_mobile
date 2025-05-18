@@ -1,3 +1,5 @@
+import { Platform, ToastAndroid, Alert } from "react-native";
+
 export const formatarDataBR = (dataISO) => {
   const [ano, mes, dia] = dataISO.split('-');
   return `${dia}/${mes}/${ano}`;
@@ -32,3 +34,11 @@ export const formatarMoeda = (text) => {
   };
 };
 
+export const msgToast = (msg) => {
+  if (Platform.OS === 'android') {
+    ToastAndroid.show(msg, ToastAndroid.SHORT);
+  } else {
+    // Em iOS, como ToastAndroid não existe, você pode adaptar com Alert
+    Alert.alert('Aviso', msg);
+  }
+}

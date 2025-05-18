@@ -28,10 +28,6 @@ export default function ModalConfig({ visible, onClose, loadContas, abrirModalLi
                     onPress={() => abrirModalGerenciar()}>
                         <Text style={styles.buttonText}>Criar novo cartão</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.button}>
-                        <Text style={styles.buttonText}>Excluir cartão</Text>
-                    </TouchableOpacity>
                 </View>
             </View>
 

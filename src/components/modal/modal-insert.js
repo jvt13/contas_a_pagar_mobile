@@ -79,7 +79,7 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSa
                                 style={styles.input}
                                 onPress={() => setShowDatePicker(true)}
                             >
-                                <Text>{form.vencimento || 'dd/mm/aaaa'}</Text>
+                                <Text style={styles.inputText}>{form.vencimento || 'dd/mm/aaaa'}</Text>
                             </TouchableOpacity>
                             {showDatePicker && (
                                 <DateTimePicker
@@ -178,5 +178,8 @@ const styles = StyleSheet.create({
         color: '#fff',
         textAlign: 'center',
         fontWeight: 'bold',
+    },
+    inputText: {
+        color: '#333'
     },
 });
