@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { Dimensions } from 'react-native';
 import Modal_Nova_Conta from '../components/modal/modal-insert';
 import ModalConfig from '../components/modal/ModalConfig';
 import MenuHeader from '../components/MenuHeader';
@@ -44,6 +45,12 @@ export default function App() {
 
     const { cartoes, getCartaoById } = useCartoes(); // ✅ correto
 
+    const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
+
+
+    const screenHeight = Dimensions.get('window').height;
+    const alturaDisponivel = screenHeight - posicaoTabelaY - 38; // Calcular o tamanho que sobrou da tela para ficar no FlatList
+
     useEffect(() => {
         const carregarCartoes = async () => {
             const lista = await getCartoes();
@@ -60,6 +67,10 @@ export default function App() {
         tipo_cartao: '',
     });
 
+    const [valorBackend, setValorBackend] = useState({
+        valor: '',
+    });
+
     const {
         contas,
         totais,
@@ -67,13 +78,14 @@ export default function App() {
         marcarComoPaga,
         salvarConta,
         getCartoes,
-    } = useContas(ano, mes, form, setForm, setModalNovaContaVisible);
+    } = useContas(ano, mes, form, setForm, valorBackend, setValorBackend, setModalNovaContaVisible);
 
     /*Trata ModalContaAcoes */
     const [modalAcoesVisible, setModalAcoesVisible] = useState(false);
     const [contaSelecionada, setContaSelecionada] = useState(null);
 
     const handleLongPress = (conta) => {
+        console.log('Conta selecionada:', conta);
         setContaSelecionada(conta);
         setModalAcoesVisible(true);
     };
@@ -96,8 +108,10 @@ export default function App() {
             vencimento: contaSelecionada.vencimento,
             valor: contaSelecionada.valor.toString(),
             categoria: contaSelecionada.categoria,
-            tipo_cartao: contaSelecionada.tipo_cartao
+            tipo_cartao: parseInt(contaSelecionada.tipo_cartao)
         });
+
+        console.log('Formulario:', form);
         setModalNovaContaVisible(true);
         setModalAcoesVisible(false);
     };
@@ -105,7 +119,7 @@ export default function App() {
     /*Fim ModalContaAcoes */
 
     return (
-        <ScrollView style={styles.container}>
+        <View style={styles.container}>
             <Text style={styles.titulo}>GERENCIAMENTO DE CONTAS</Text>
             <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
 
@@ -144,29 +158,37 @@ export default function App() {
             </View>
 
             {/* Tabela */}
-            <View style={styles.tabela}>
+            <View style={styles.tabela} onLayout={(event) => {
+                const { y } = event.nativeEvent.layout;
+                setPosicaoTabelaY(y);
+            }}>
                 <View style={styles.cabecalhoLinha}>
                     <Text style={styles.cabecalho}>Nome</Text>
                     <Text style={styles.cabecalho}>Vencimento</Text>
                     <Text style={styles.cabecalho}>Valor</Text>
                     <Text style={styles.cabecalho}>Paga</Text>
                 </View>
-                {contas.map(conta => (
-                    <TouchableOpacity
-                        key={conta.id}
-                        style={styles.linha}
-                        onLongPress={() => handleLongPress(conta)} // ← aqui
-                        delayLongPress={500}
-                    >
-                        <Text style={styles.coluna}>{conta.nome}</Text>
-                        <Text style={styles.coluna}>{conta.vencimento}</Text>
-                        <Text style={styles.coluna}>R$ {conta.valor.toFixed(2).replace('.', ',')}</Text>
-                        <CustomCheckBox
-                            value={conta.paga}
-                            onValueChange={(novoValor) => marcarComoPaga(conta.id, novoValor)}
-                        />
-                    </TouchableOpacity>
-                ))}
+                
+                    <FlatList
+                        data={contas}
+                        keyExtractor={item => item.id.toString()}
+                        renderItem={({ item }) => (
+                            <TouchableOpacity
+                                onLongPress={() => handleLongPress(item)}
+                                delayLongPress={300}
+                                style={styles.linha}
+                            >
+                                <Text style={styles.coluna}>{item.nome}</Text>
+                                <Text style={styles.coluna}>{item.vencimento}</Text>
+                                <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
+                                <CustomCheckBox
+                                    value={item.paga}
+                                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
+                                />
+                            </TouchableOpacity>
+                        )}
+                        style={{ maxHeight: alturaDisponivel }}
+                    />
 
             </View>
 
@@ -180,6 +202,8 @@ export default function App() {
                     onClose={() => setModalNovaContaVisible(false)}
                     form={form}
                     setForm={setForm}
+                    valorBackend={valorBackend}
+                    setValorBackend={setValorBackend}
                     onSave={() => salvarConta(form, setForm, modalNovaContaVisible)}
                     cartoes={cartoes}
                     getCartaoById={getCartaoById}
@@ -223,7 +247,7 @@ export default function App() {
                 onExcluir={excluirConta}
             />
 
-        </ScrollView>
+        </View>
     );
 }
 
@@ -253,7 +277,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         alignItems: 'center',
     },
-    tabela: { marginTop: 20 },
+    tabela: { marginTop: 20, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, overflow: 'hidden' },
     cabecalhoLinha: {
         flexDirection: 'row',
         justifyContent: 'space-between',

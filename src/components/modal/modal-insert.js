@@ -5,10 +5,25 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { formatarDataBR, aplicarMascaraValor, formatarMoeda } from '../../utils/util';
 
-export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSave, cartoes, getCartaoById }) {
-    const [showDatePicker, setShowDatePicker] = useState(false);
+export default function Modal_Nova_Conta({ visible, onClose, form, setForm, valorBackend, setValorBackend, onSave, cartoes, getCartaoById }) {
 
-    const [valorDisplay, setValorDisplay] = useState('0.00');
+    useEffect(() => {
+        if (visible && form.valor && !form.valor.toString().startsWith('R$')) {
+            const valorFloat = parseFloat(form.valor);
+            const display = valorFloat.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+
+            setForm(f => ({ ...f, valor: display }));
+        }
+    }, [visible]);
+
+
+
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const handleDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
@@ -45,8 +60,13 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSa
                     >
                         <Picker.Item label="Selecione" value="" />
                         {cartoes.map(cartao => (
-                            <Picker.Item key={cartao.id} label={cartao.nome} value={cartao.id} />
+                            <Picker.Item
+                                key={cartao.id}
+                                label={String(cartao.nome || '')}
+                                value={cartao.id}
+                            />
                         ))}
+
                     </Picker>
                     </View>
 
@@ -96,11 +116,12 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, onSa
                                 style={styles.input}
                                 placeholder="Valor"
                                 keyboardType="numeric"
-                                value={valorDisplay}
+                                value={form.valor}
                                 onChangeText={(text) => {
-                                    const {display, backend} = formatarMoeda(text);
-                                    setForm(f => ({ ...f, valor: backend }));
-                                    setValorDisplay(display);
+                                    const { display, backend } = formatarMoeda(text);
+                                    setValorBackend({ valor: backend });
+                                    setForm(f => ({ ...f, valor: display }));
+                                    /*setValorDisplay(display);*/
                                 }}
                             />
                         </View>

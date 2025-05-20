@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { postDados } from '../utils/services';
 
-export default function useContas(ano, mes, form, setForm, setModalVisible) {
+export default function useContas(ano, mes, form, setForm, valorBackend, setValorBackend, setModalVisible) {
   const [contas, setContas] = useState([]);
   const [totais, setTotais] = useState({
     total_limite: 0,
@@ -52,6 +52,7 @@ export default function useContas(ano, mes, form, setForm, setModalVisible) {
   };
 
   const salvarConta = async () => {
+
     if (!form.nome || !form.valor || !form.vencimento) {
       Alert.alert('Campos obrigatórios', 'Preencha nome, valor e vencimento');
       return;

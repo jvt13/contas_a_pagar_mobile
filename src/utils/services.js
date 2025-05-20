@@ -1,6 +1,8 @@
 // Endereço base da API: usa variável de ambiente (EXPO_PUBLIC_API_URL) se estiver definida.
 // Caso contrário, usa o IP local padrão.
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://46.202.147.58';
+let API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.100:5000';
+
+const BACKUP_API_URL = 'http://46.202.147.58'; // sua API externa
 
 /**
  * Função genérica de requisição que intercepta todas as chamadas para logar e tratar erros.
@@ -9,40 +11,56 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://46.202.147.58';
  * @returns {Promise<object>} - Resposta da API em JSON
  */
 async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
-  const url = `${API_URL}${path}`;
+  let url = `${API_URL}${path}`;
   console.log(`[Interceptando] ${method} -> ${url}`);
 
-  const options = {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...headers,
-    },
+  const baseHeaders = {
+    'Content-Type': 'application/json',
+    ...headers,
   };
 
-  if (body) {
-    options.body = JSON.stringify(body);
+  const stringifiedBody = body ? JSON.stringify(body) : null;
+  if (stringifiedBody) {
     console.log('[Payload]:', body);
   }
 
-  try {
-    const response = await fetch(url, options);
+  const makeRequest = async (urlToUse) => {
+    const options = {
+      method,
+      headers: baseHeaders,
+      ...(stringifiedBody && { body: stringifiedBody }),
+    };
 
-    if (!response.ok) {
-      console.warn(`[Erro ${response.status}] na URL: ${url}`);
-      throw new Error(`Erro ${response.status}`);
+    const res = await fetch(urlToUse, options);
+
+    if (!res.ok) {
+      console.warn(`[Erro ${res.status}] na URL: ${urlToUse}`);
+      throw new Error(`Erro ${res.status}`);
     }
 
-    const json = await response.json();
+    const json = await res.json();
     const jsonString = JSON.stringify(json);
     const tamanhoBytes = new TextEncoder().encode(jsonString).length;
     console.log(`[Tamanho da resposta]: ${tamanhoBytes} bytes`);
     return json;
+  };
+
+  try {
+    return await makeRequest(url);
   } catch (error) {
-    console.error('[Requisição falhou]:', error.message);
-    throw error;
+    //console.error(`[Falha com API local: ${url}]. Tentando fallback.`);
+
+    try {
+      const fallbackUrl = `${BACKUP_API_URL}${path}`;
+      console.log(`[Tentando fallback] ${method} -> ${fallbackUrl}`);
+      return await makeRequest(fallbackUrl);
+    } catch (fallbackError) {
+      //console.error('[Falha na API externa também]:', fallbackError.message);
+      throw fallbackError;
+    }
   }
 }
+
 
 /**
  * POST genérico (usado para criar ou enviar dados para o backend).
