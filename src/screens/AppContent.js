@@ -12,6 +12,7 @@ import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
 import { deleteDados } from '../utils/services'
 import { msgToast } from '../utils/util';
+import { LogBox } from 'react-native'; 
 
 function CustomCheckBox({ value, onValueChange }) {
     return (
@@ -34,6 +35,9 @@ function CustomCheckBox({ value, onValueChange }) {
 }
 
 export default function App() {
+
+    //LogBox.ignoreAllLogs();  //Uso para ignorar todos os logs de aviso (testes)
+
     const [ano, setAno] = useState('2025');
     const [mes, setMes] = useState('4'); // Maio = 4
 

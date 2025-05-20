@@ -2,7 +2,7 @@
 // Caso contrário, usa o IP local padrão.
 let API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.100:5000';
 
-const BACKUP_API_URL = 'http://46.202.147.58'; // sua API externa
+const BACKUP_API_URL = 'https://www.srv-jvt.com'; // sua API externa
 
 /**
  * Função genérica de requisição que intercepta todas as chamadas para logar e tratar erros.
