@@ -13,8 +13,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.seuusuario.contaspagar"
     },
+    "scheme": "contaspagar",
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -30,6 +32,9 @@
       "eas": {
         "projectId": "61b34e92-c4e6-425c-8bd2-3a8f8496c082"
       }
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }
