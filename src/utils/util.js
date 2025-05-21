@@ -1,5 +1,4 @@
 import { Platform, ToastAndroid, Alert } from "react-native";
-const crypto = require('crypto');
 
 export const formatarDataBR = (dataISO) => {
   const [ano, mes, dia] = dataISO.split('-');
@@ -42,22 +41,4 @@ export const msgToast = (msg) => {
     // Em iOS, como ToastAndroid não existe, você pode adaptar com Alert
     Alert.alert('Aviso', msg);
   }
-}
-
-export function encrypt(key, data) {
-    var cipher = crypto.createCipher('aes-256-cbc', key);
-    var crypted = cipher.update(data, 'utf-8', 'hex');
-    crypted += cipher.final('hex');
-
-    console.log("Criptografia concluida!");
-    return crypted;
-}
-
-export function decrypt(key, data) {
-    var decipher = crypto.createDecipher('aes-256-cbc', key);
-    var decrypted = decipher.update(data, 'hex', 'utf-8');
-    decrypted += decipher.final('utf-8');
-
-    console.log("Descriptografia concluida!");
-    return decrypted;
-}
+};

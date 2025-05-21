@@ -18,7 +18,9 @@ export default function Register({ navigation }) {
     setLoading(true);
     try {
         console.log('Tentando cadastrar:', { name, email, password });
-      const response = await postDados('/auth/register', { name, email, password });
+        const userName = email.split('@')[0]; // Cria um nome de usuário a partir do e-mail
+
+      const response = await postDados('/auth/register', { name, userName, email, password});
       // Supondo que postDados retorne um objeto { success: boolean, data?, message? }
       if (response && response.sucess) {
         Alert.alert('Sucesso', 'Conta criada com sucesso!', [
