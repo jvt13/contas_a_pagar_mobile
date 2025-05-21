@@ -1,0 +1,1 @@
+set "EXPO_PUBLIC_API_URL=https://www.srv-jvt.com" && npx eas build -p android --profile preview
