@@ -23,7 +23,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
   const carregarCartoes = async () => {
     try {
       const res = await getDados('/get_cartoes');
-      if (res.sucess) {
+      if (res.success) {
         setCartoes(res.data);
       } else {
         Alert.alert('Erro', 'Erro ao carregar cartões');

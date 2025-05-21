@@ -22,7 +22,7 @@ export default function Register({ navigation }) {
 
       const response = await postDados('/auth/register', { name, userName, email, password});
       // Supondo que postDados retorne um objeto { success: boolean, data?, message? }
-      if (response && response.sucess) {
+      if (response && response.success) {
         Alert.alert('Sucesso', 'Conta criada com sucesso!', [
           { text: 'OK', onPress: () => navigation.replace('Login') }
         ]);

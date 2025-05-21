@@ -9,7 +9,7 @@ const API_URL = Constants.expoConfig.extra.EXPO_PUBLIC_API_URL;
 
 /**
  * Função genérica de requisição para o servidor.
- * @param {string} path   - endpoint relativo (ex: '/auth/register')
+ * @param {string} path   - endpoint relativo (ex: '/auth/login')
  * @param {object} opts   - método, body e headers
  */
 async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
@@ -22,13 +22,25 @@ async function request(path, { method = 'GET', body = null, headers = {} } = {})
     ...(body && { body: JSON.stringify(body) }),
   };
 
+  // Executa a requisição
   const res = await fetch(url, init);
-  if (!res.ok) {
-    console.warn(`[Erro ${res.status}] na URL: ${url}`);
-    throw new Error(`Erro ${res.status}`);
+
+  // Tenta ler o JSON (pode ser sucesso ou erro)
+  let data;
+  try {
+    data = await res.json();
+  } catch (e) {
+    data = null;
   }
 
-  const data = await res.json();
+  if (!res.ok) {
+    // Prioriza mensagem do backend, se existir
+    const errorMessage = data?.message || data?.mensagem || `Erro ${res.status}`;
+    console.warn(`[Erro ${res.status}] na URL: ${url} - ${errorMessage}`);
+    throw new Error(errorMessage);
+  }
+
+  // Log de tamanho da resposta
   const size = new TextEncoder().encode(JSON.stringify(data)).length;
   console.log(`[Tamanho da resposta]: ${size} bytes`);
   return data;
@@ -47,6 +59,14 @@ export async function getDados(path) {
 export async function deleteDados(path) {
   return request(path, { method: 'DELETE' });
 }
+
+// Agora, no frontend, basta capturar err.message no catch:
+// try {
+//   const response = await postDados('/auth/login', { email, password });
+// } catch (err) {
+//   Alert.alert('Login falhou', err.message);
+// }
+
 
 // Certifique-se de que em app.config.js você tenha:
 // extra: {

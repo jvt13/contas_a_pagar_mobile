@@ -9,7 +9,7 @@ export default function useCartoes() {
   const loadCartoes = async () => {
     try {
       const res = await getDados('/get_cartoes');
-      if (res.sucess && Array.isArray(res.data)) {
+      if (res.success && Array.isArray(res.data)) {
         setCartoes(res.data);
       } else {
         Alert.alert('Erro', res.message || 'Erro ao carregar cartões');

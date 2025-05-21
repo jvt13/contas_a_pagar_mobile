@@ -21,7 +21,7 @@ export async function atualizarLimite(ano, mes, limite, id) {
       id,
       tipo: 'update',
     });
-    return res.sucess;
+    return res.success;
   } catch (err) {
     console.error('[atualizarLimite] Erro:', err);
     throw err;
@@ -36,7 +36,7 @@ export async function inserirLimite(ano, mes, limite) {
       limite,
       tipo: 'insert',
     });
-    return res.sucess;
+    return res.success;
   } catch (err) {
     console.error('[inserirLimite] Erro:', err);
     throw err;

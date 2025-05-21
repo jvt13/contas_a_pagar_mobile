@@ -15,7 +15,7 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
   const loadContas = async () => {
     try {
       const data = await postDados('/dados_tab', { ano, mes });
-      if (data.sucess) {
+      if (data.success) {
         setContas(data.contas || []);
         setTotais({
           total_limite: data.total_limite,
@@ -38,7 +38,7 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
   const marcarComoPaga = async (index, paga) => {
     try {
       const data = await postDados('/marcar-paga', { mes, index, paga });
-      if (data.sucess) {
+      if (data.success) {
         setContas(prev =>
           prev.map(c => (c.id === index ? { ...c, paga } : c))
         );
@@ -67,7 +67,7 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
     try {
       const res = await postDados('/form_conta', dados);
 
-      if (res.sucess) {
+      if (res.success) {
         Alert.alert('Sucesso', 'Conta adicionada!');
         setForm({
           nome: '',
