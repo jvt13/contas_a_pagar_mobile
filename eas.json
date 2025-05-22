@@ -7,6 +7,9 @@
         "preview": {
             "android": {
                 "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://www.srv-jvt.com"
             }
         },
         "preview2": {
@@ -20,6 +23,13 @@
         "preview4": {
             "distribution": "internal"
         },
-        "production": {}
+        "production": {
+            "android": {
+                "buildType": "app-bundle"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://www.srv-jvt.com"
+            }
+        }
     }
 }
