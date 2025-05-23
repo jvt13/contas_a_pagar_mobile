@@ -1,12 +1,16 @@
-import 'dotenv/config'; // só se usar .env
+import 'dotenv/config';
 
-export default ({ config }) => ({
-  ...config,
-  extra: {
-    ...config.extra, // mantém eas.projectId
-    // Aqui sim, usamos a env do EAS ou, em dev, caímos no fallback local
-    EXPO_PUBLIC_API_URL:
-      process.env.EXPO_PUBLIC_API_URL ||
-      'http://192.168.15.100:5000',
-  },
-});
+export default ({ config }) => {
+  // EAS_BUILD é "true" somente no servidor de build da Expo
+  const isEAS = !!process.env.EAS_BUILD;
+
+  return {
+    ...config,
+    extra: {
+      ...config.extra,
+      EXPO_PUBLIC_API_URL: isEAS
+        ? process.env.EXPO_PUBLIC_API_URL                    // build (preview, production…)
+        : 'http://192.168.15.100:5000',                      // dev local (expo start, expo run:android)
+    },
+  };
+};

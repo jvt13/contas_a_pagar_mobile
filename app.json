@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.seuusuario.contaspagar"
+      "bundleIdentifier": "com.zevitor.controle_contas"
     },
     "scheme": "contaspagar",
     "android": {
