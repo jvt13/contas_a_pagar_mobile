@@ -7,7 +7,7 @@ import {
     StyleSheet,
 } from 'react-native';
 
-export default function ModalConfig({ visible, onClose, loadContas, abrirModalLimite, abrirModalGerenciar }) {
+export default function ModalConfig({ visible, onClose, loadContas, abrirModalLimite, abrirModalGerenciar, abrirModalContrlOrga }) {
 
     return (
         <Modal transparent visible={visible} animationType="fade">
@@ -20,13 +20,19 @@ export default function ModalConfig({ visible, onClose, loadContas, abrirModalLi
                     <Text style={styles.title}>Opções</Text>
 
                     <TouchableOpacity style={styles.button}
-                    onPress={() => {abrirModalLimite()}}>
+                        onPress={() => { abrirModalLimite() }}>
                         <Text style={styles.buttonText}>Gerenciar limite</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.button}
-                    onPress={() => abrirModalGerenciar()}>
+                        onPress={() => abrirModalGerenciar()}>
                         <Text style={styles.buttonText}>Criar novo cartão</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.button}
+                        onPress={abrirModalContrlOrga}>
+                        <Text style={styles.buttonText}>Controle de Organização</Text>
                     </TouchableOpacity>
                 </View>
             </View>

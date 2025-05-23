@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
+import { msgToast } from '../utils/util';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -10,6 +13,8 @@ export default function Login({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+
+    const API_URL = Constants.expoConfig.extra.EXPO_PUBLIC_API_URL;
 
     // Configure Google Sign-In
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -38,8 +43,12 @@ export default function Login({ navigation }) {
             const response = await postDados('/auth/login', { email, password });
             console.log('response', response);
 
-            // 2) testa o campo `success` (ou `success` se você tiver mantido esse nome)
             if (response.success) {
+                const { userId } = response.data;
+                // Salva no storage
+                await AsyncStorage.setItem('@userId', String(userId));
+                // navega para Home
+
                 Alert.alert('Sucesso', 'Login realizado com sucesso!', [
                     { text: 'OK', onPress: () => navigation.replace('Home') }
                 ]);
@@ -50,7 +59,7 @@ export default function Login({ navigation }) {
             // 3) captura erros de rede ou status >= 400 que lançam exceção
             console.error('Erro no login:', err);
             //Alert.alert('Erro', err.message || 'Não foi possível conectar ao servidor');
-            Alert.alert('Login falhou', err.message);
+            Alert.alert('Login falhou', err.message + ' - ' + API_URL);
         } finally {
             setLoading(false);
         }

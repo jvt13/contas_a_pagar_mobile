@@ -12,7 +12,8 @@ import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
 import { deleteDados } from '../utils/services'
 import { msgToast } from '../utils/util';
-import { LogBox } from 'react-native'; 
+import { LogBox } from 'react-native';
+import ModalShareOrganization from '../components/modal/ModalShareOrganization';
 
 function CustomCheckBox({ value, onValueChange }) {
     return (
@@ -45,6 +46,8 @@ export default function App() {
     const [modalConfigVisible, setModalConfigVisible] = useState(false);
     const [modalLimiteVisible, setModalLimiteVisible] = useState(false);
     const [modalGerenciarVisible, setModalGerenciarVisible] = useState(false);
+    const [shareModalVisible, setShareModalVisible] = useState(false);
+    const [sharedOrgKey, setSharedOrgKey] = useState('');
 
 
     const { cartoes, getCartaoById } = useCartoes(); // ✅ correto
@@ -172,27 +175,27 @@ export default function App() {
                     <Text style={styles.cabecalho}>Valor</Text>
                     <Text style={styles.cabecalho}>Paga</Text>
                 </View>
-                
-                    <FlatList
-                        data={contas}
-                        keyExtractor={item => item.id.toString()}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                onLongPress={() => handleLongPress(item)}
-                                delayLongPress={300}
-                                style={styles.linha}
-                            >
-                                <Text style={styles.coluna}>{item.nome}</Text>
-                                <Text style={styles.coluna}>{item.vencimento}</Text>
-                                <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
-                                <CustomCheckBox
-                                    value={item.paga}
-                                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
-                                />
-                            </TouchableOpacity>
-                        )}
-                        style={{ maxHeight: alturaDisponivel }}
-                    />
+
+                <FlatList
+                    data={contas}
+                    keyExtractor={item => item.id.toString()}
+                    renderItem={({ item }) => (
+                        <TouchableOpacity
+                            onLongPress={() => handleLongPress(item)}
+                            delayLongPress={300}
+                            style={styles.linha}
+                        >
+                            <Text style={styles.coluna}>{item.nome}</Text>
+                            <Text style={styles.coluna}>{item.vencimento}</Text>
+                            <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
+                            <CustomCheckBox
+                                value={item.paga}
+                                onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
+                            />
+                        </TouchableOpacity>
+                    )}
+                    style={{ maxHeight: alturaDisponivel }}
+                />
 
             </View>
 
@@ -225,7 +228,9 @@ export default function App() {
                 abrirModalGerenciar={() => {
                     setModalGerenciarVisible(true);
                     setModalConfigVisible(false);
-                }} />
+                }}
+                abrirModalContrlOrga={() => setShareModalVisible(true)}
+            />
 
             <ModalGerenciarCartao
                 visible={modalGerenciarVisible}
@@ -249,6 +254,13 @@ export default function App() {
                 onClose={() => setModalAcoesVisible(false)}
                 onEditar={editarConta}
                 onExcluir={excluirConta}
+            />
+
+            <ModalShareOrganization
+                visible={shareModalVisible}
+                onClose={() => setShareModalVisible(false)}
+                existingKey={sharedOrgKey}
+                onSave={(key) => setSharedOrgKey(key)}
             />
 
         </View>
