@@ -1,8 +1,8 @@
 import { getDados, postDados, putDados, deleteDados  } from '../utils/services'; // ajuste o caminho conforme necessário
 
-export async function obterIdLimite(ano, mes) {
+export async function obterIdLimite(ano, mes, organization) {
   try {
-    const res = await postDados('/limit_list', { ano, mes });
+    const res = await postDados('/limit_list', { ano, mes, organization });
     console.log('[obterIdLimite] Resposta:', res);
     return res.success ? res.id : null;
   } catch (err) {
@@ -28,12 +28,14 @@ export async function atualizarLimite(ano, mes, limite, id) {
   }
 }
 
-export async function inserirLimite(ano, mes, limite) {
+export async function inserirLimite(ano, mes, limite, user, organization) {
   try {
     const res = await postDados('/salvar_limite', {
       ano,
       mes,
       limite,
+      user,
+      organization,
       tipo: 'insert',
     });
     return res.success;

@@ -1,11 +1,22 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    TouchableWithoutFeedback,
+    Keyboard
+} from 'react-native';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setStorageItem, getStorageItem } from '../utils/util';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { getDados, postDados, putDados, deleteDados } from '../utils/services';
-import { msgToast } from '../utils/util';
+import { postDados } from '../utils/services';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -13,10 +24,9 @@ export default function Login({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [hidePassword, setHidePassword] = useState(true);
 
-    const API_URL = Constants.expoConfig.extra.EXPO_PUBLIC_API_URL;
 
-    // Configure Google Sign-In
     const [request, response, promptAsync] = Google.useAuthRequest({
         expoClientId: '<YOUR_EXPO_CLIENT_ID>',
         iosClientId: '<YOUR_IOS_CLIENT_ID>',
@@ -27,7 +37,6 @@ export default function Login({ navigation }) {
     React.useEffect(() => {
         if (response?.type === 'success') {
             const { authentication } = response;
-            // TODO: exchange authentication.accessToken for app credentials
             Alert.alert('Google Sign-In Success', `Token: ${authentication.accessToken}`);
         }
     }, [response]);
@@ -36,80 +45,100 @@ export default function Login({ navigation }) {
         if (!email || !password) {
             return Alert.alert('Erro', 'Preencha e-mail e senha');
         }
-
         setLoading(true);
         try {
-            // 1) aguarda a resposta do servidor
-            const response = await postDados('/auth/login', { email, password });
-            console.log('response', response);
-
-            if (response.success) {
-                const { userId } = response.data;
-                // Salva no storage
-                await AsyncStorage.setItem('@userId', String(userId));
-                // navega para Home
+            const resp = await postDados('/auth/login', { email, password });
+            if (resp.success) {
+                //Alert.alert('chave: '+ resp.data.userId)
+                await setStorageItem('@userId', String(resp.data.userId));
+                await setStorageItem('@userKeyShare', String(resp.data.key_share));
+                await setStorageItem('@userKeyShareId', String(resp.data.key_share_id));
 
                 Alert.alert('Sucesso', 'Login realizado com sucesso!', [
                     { text: 'OK', onPress: () => navigation.replace('Home') }
                 ]);
             } else {
-                Alert.alert('Login falhou', response.message || 'Verifique suas credenciais');
+                Alert.alert('Login falhou', resp.message || 'Verifique suas credenciais');
             }
         } catch (err) {
-            // 3) captura erros de rede ou status >= 400 que lançam exceção
-            console.error('Erro no login:', err);
-            //Alert.alert('Erro', err.message || 'Não foi possível conectar ao servidor');
-            Alert.alert('Login falhou', err.message + ' - ' + API_URL);
+            console.error(err);
+            Alert.alert('Login falhou', err.message);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Bem-vindo ao Contas a Pagar</Text>
+        <KeyboardAvoidingView
+            style={styles.container}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+                <ScrollView
+                    contentContainerStyle={styles.inner}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <Text style={styles.title}>Bem-vindo ao Contas a Pagar</Text>
 
-            <TouchableOpacity
-                style={styles.googleButton}
-                onPress={() => promptAsync()}
-                disabled={!request}
-            >
-                <Text style={styles.googleButtonText}>Entrar com Google</Text>
-            </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.googleButton}
+                        onPress={() => promptAsync()}
+                        disabled={!request}
+                    >
+                        <Text style={styles.googleButtonText}>Entrar com Google</Text>
+                    </TouchableOpacity>
 
-            <Text style={styles.orText}>ou</Text>
+                    <Text style={styles.orText}>ou</Text>
 
-            <TextInput
-                style={styles.input}
-                placeholder="E-mail"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Senha"
-                secureTextEntry
-                value={password}
-                onChangeText={setPassword}
-            />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="E-mail"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={email}
+                        onChangeText={setEmail}
+                    />
+                    <View style={styles.passwordRow}>
+                        <TextInput
+                            style={[styles.input, { flex: 1 }]}
+                            placeholder="Senha"
+                            secureTextEntry={hidePassword}
+                            value={password}
+                            onChangeText={setPassword}
+                        />
+                        <TouchableOpacity
+                            onPress={() => setHidePassword(!hidePassword)}
+                            style={styles.showButton}
+                        >
+                            <Text style={styles.showButtonText}>
+                                {hidePassword ? 'Mostrar' : 'Ocultar'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
-            <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
-                <Text style={styles.loginButtonText}>Entrar</Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerText}>Cadastrar nova conta</Text>
-            </TouchableOpacity>
-        </View>
+                    <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
+                        <Text style={styles.loginButtonText}>
+                            {loading ? 'Entrando...' : 'Entrar'}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                        <Text style={styles.registerText}>Cadastrar nova conta</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+    },
+    inner: {
+        flexGrow: 1,              // permite centralizar ou rolar
+        justifyContent: 'center', // centralizado quando não há teclado
         padding: 20,
         backgroundColor: '#f5f5f5',
     },
@@ -134,14 +163,27 @@ const styles = StyleSheet.create({
         marginVertical: 15,
         color: '#555',
     },
+    passwordRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
     input: {
         height: 48,
         borderColor: '#ccc',
         borderWidth: 1,
         borderRadius: 4,
         paddingHorizontal: 10,
-        marginBottom: 15,
         backgroundColor: '#fff',
+    },
+    showButton: {
+        marginLeft: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 12,
+    },
+    showButtonText: {
+        color: '#0066cc',
+        fontWeight: 'bold',
     },
     loginButton: {
         backgroundColor: '#0066cc',

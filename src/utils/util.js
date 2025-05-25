@@ -1,4 +1,5 @@
 import { Platform, ToastAndroid, Alert } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const formatarDataBR = (dataISO) => {
   const [ano, mes, dia] = dataISO.split('-');
@@ -42,3 +43,43 @@ export const msgToast = (msg) => {
     Alert.alert('Aviso', msg);
   }
 };
+
+
+/**
+ * Salva um valor no AsyncStorage
+ * @param {string} chave - A chave para o item
+ * @param {any} valor - O valor a ser salvo (string ou será convertido para string)
+ */
+export async function setStorageItem(chave, valor) {
+  try {
+    await AsyncStorage.setItem(chave, String(valor));
+  } catch (error) {
+    console.error(`Erro ao salvar item no AsyncStorage [${chave}]:`, error);
+  }
+}
+
+/**
+ * Recupera um valor do AsyncStorage
+ * @param {string} chave - A chave do item a recuperar
+ * @returns {Promise<string|null>} O valor armazenado ou null se não existir
+ */
+export async function getStorageItem(chave) {
+  try {
+    return await AsyncStorage.getItem(chave);
+  } catch (error) {
+    console.error(`Erro ao recuperar item do AsyncStorage [${chave}]:`, error);
+    return null;
+  }
+}
+
+/**
+ * Remove um item do AsyncStorage
+ * @param {string} chave - A chave do item a ser removido
+ */
+export async function removeStorageItem(chave) {
+  try {
+    await AsyncStorage.removeItem(chave);
+  } catch (error) {
+    console.error(`Erro ao remover item do AsyncStorage [${chave}]:`, error);
+  }
+}

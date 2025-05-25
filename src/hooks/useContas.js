@@ -2,8 +2,11 @@
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { postDados } from '../utils/services';
+import { msgToast } from '../utils/util';
+import { setStorageItem, getStorageItem } from '../utils/util';
 
-export default function useContas(ano, mes, form, setForm, valorBackend, setValorBackend, setModalVisible) {
+export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBackend, setValorBackend, setModalVisible) {
+  const [anos, setAnos] = useState([]);
   const [contas, setContas] = useState([]);
   const [totais, setTotais] = useState({
     total_limite: 0,
@@ -13,9 +16,12 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
   });
 
   const loadContas = async () => {
-    try {
-      const data = await postDados('/dados_tab', { ano, mes });
+    try { 
+      const organization = sharedOrgKey || await getStorageItem('@userKeyShareId');
+      //Alert.alert('Organization: '+organization)
+      const data = await postDados('/dados_tab', { ano, mes, organization });
       if (data.success) {
+        setAnos(data.anos || []);
         setContas(data.contas || []);
         setTotais({
           total_limite: data.total_limite,
@@ -33,7 +39,7 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
 
   useEffect(() => {
     loadContas();
-  }, [ano, mes]);
+  }, [ano, mes, sharedOrgKey]);
 
   const marcarComoPaga = async (index, paga) => {
     try {
@@ -68,13 +74,15 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
       const res = await postDados('/form_conta', dados);
 
       if (res.success) {
-        Alert.alert('Sucesso', 'Conta adicionada!');
+        //Alert.alert('Sucesso', 'Conta adicionada!');
+        msgToast('Conta adicionada com sucesso!')
         setForm({
           nome: '',
           vencimento: '',
           valor: '',
           categoria: '',
           tipo_cartao: '',
+          organization: '',
         });
         setModalVisible(false);
         loadContas();
@@ -89,6 +97,7 @@ export default function useContas(ano, mes, form, setForm, valorBackend, setValo
   return {
     contas,
     totais,
+    anos,
     loadContas,
     marcarComoPaga,
     salvarConta,

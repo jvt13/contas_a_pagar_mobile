@@ -44,7 +44,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
         await putDados(`/update_cartao/${editId}`, form);
         Alert.alert('Sucesso', 'Cartão atualizado com sucesso!');
       } else {
-        console.log(form); 
+        console.log(form);
         await postDados('/add_cartao', form);
         Alert.alert('Sucesso', 'Cartão adicionado com sucesso!');
       }
@@ -91,15 +91,18 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
           />
 
           <Text style={styles.label}>Crédito/Débito:</Text>
-          <Picker
-            selectedValue={form.tipo_cartao_cartao}
-            onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
-            style={styles.picker}
-          >
-            <Picker.Item label="Selecione" value="" />
-            <Picker.Item label="Crédito" value="credito" />
-            <Picker.Item label="Débito" value="debito" />
-          </Picker>
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={form.tipo_cartao_cartao}
+              onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
+              style={styles.picker}
+            >
+              <Picker.Item label="Selecione" value="" />
+              <Picker.Item label="Crédito" value="credito" />
+              <Picker.Item label="Débito" value="debito" />
+            </Picker>
+          </View>
+
 
           <View style={styles.row}>
             <View style={styles.column}>
@@ -172,8 +175,19 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: '#fff', padding: 20, width: '90%', borderRadius: 8 },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
   label: { marginTop: 10, fontWeight: '600' },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginTop: 4 },
-  picker: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, marginTop: 4 },
+  input: { color: '#000', borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginTop: 4 },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#999',
+    borderRadius: 5,
+    overflow: 'hidden',
+    width: '100%', // Deixa um pequeno espaço entre os Pickers
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#fff',
+  },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   column: { flex: 0.48 },
   btnAdd: { backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginTop: 10 },

@@ -13,6 +13,7 @@ import ModalContaAcoes from '../components/modal/ModalContaAcoes';
 import { deleteDados } from '../utils/services'
 import { msgToast } from '../utils/util';
 import { LogBox } from 'react-native';
+import { setStorageItem, getStorageItem } from '../utils/util';
 import ModalShareOrganization from '../components/modal/ModalShareOrganization';
 
 function CustomCheckBox({ value, onValueChange }) {
@@ -39,14 +40,18 @@ export default function App() {
 
     //LogBox.ignoreAllLogs();  //Uso para ignorar todos os logs de aviso (testes)
 
-    const [ano, setAno] = useState('2025');
-    const [mes, setMes] = useState('4'); // Maio = 4
+    const data = new Date();
+    const ano_atual = data.getFullYear().toString();
+    const mes_atual = data.getMonth().toString();
+    const [ano, setAno] = useState(ano_atual);
+    const [mes, setMes] = useState(mes_atual); // Maio = 4
 
     const [modalNovaContaVisible, setModalNovaContaVisible] = useState(false);
     const [modalConfigVisible, setModalConfigVisible] = useState(false);
     const [modalLimiteVisible, setModalLimiteVisible] = useState(false);
     const [modalGerenciarVisible, setModalGerenciarVisible] = useState(false);
     const [shareModalVisible, setShareModalVisible] = useState(false);
+
     const [sharedOrgKey, setSharedOrgKey] = useState('');
 
 
@@ -58,20 +63,13 @@ export default function App() {
     const screenHeight = Dimensions.get('window').height;
     const alturaDisponivel = screenHeight - posicaoTabelaY - 38; // Calcular o tamanho que sobrou da tela para ficar no FlatList
 
-    useEffect(() => {
-        const carregarCartoes = async () => {
-            const lista = await getCartoes();
-            if (Array.isArray(lista)) setCartoes(lista);
-        };
-        carregarCartoes();
-    }, []);
-
     const [form, setForm] = useState({
         nome: '',
         vencimento: '',
         valor: '',
         categoria: '',
         tipo_cartao: '',
+        organization: '',
     });
 
     const [valorBackend, setValorBackend] = useState({
@@ -81,15 +79,39 @@ export default function App() {
     const {
         contas,
         totais,
+        anos,
         loadContas,
         marcarComoPaga,
         salvarConta,
         getCartoes,
-    } = useContas(ano, mes, form, setForm, valorBackend, setValorBackend, setModalNovaContaVisible);
+    } = useContas(ano, mes, sharedOrgKey, form, setForm, valorBackend, setValorBackend, setModalNovaContaVisible);
 
     /*Trata ModalContaAcoes */
     const [modalAcoesVisible, setModalAcoesVisible] = useState(false);
     const [contaSelecionada, setContaSelecionada] = useState(null);
+
+    useEffect(() => {
+        const carregarCartoes = async () => {
+            const lista = await getCartoes();
+            if (Array.isArray(lista)) setCartoes(lista);
+        };
+        carregarCartoes();
+
+        getStorageItem('@userKeyShareId')
+            .then(key => {
+                if (key) {
+                    setSharedOrgKey(key);
+                    setForm(prevForm => ({
+                        ...prevForm,
+                        organization: key
+                    }));
+
+                }
+            })
+            .catch(err => console.error('Erro lendo keyShare:', err));
+
+
+    }, []);
 
     const handleLongPress = (conta) => {
         console.log('Conta selecionada:', conta);
@@ -132,24 +154,54 @@ export default function App() {
 
             {/* Filtros */}
             <View style={styles.filtros}>
-                <Picker selectedValue={ano} onValueChange={setAno} style={styles.picker}>
-                    <Picker.Item label="2025" value="2025" />
-                    <Picker.Item label="2024" value="2024" />
-                </Picker>
-                <Picker selectedValue={mes} onValueChange={setMes} style={styles.picker}>
-                    <Picker.Item label="Janeiro" value="0" />
-                    <Picker.Item label="Fevereiro" value="1" />
-                    <Picker.Item label="Março" value="2" />
-                    <Picker.Item label="Abril" value="3" />
-                    <Picker.Item label="Maio" value="4" />
-                    <Picker.Item label="Junho" value="5" />
-                    <Picker.Item label="Julho" value="6" />
-                    <Picker.Item label="Agosto" value="7" />
-                    <Picker.Item label="Setembro" value="8" />
-                    <Picker.Item label="Outubro" value="9" />
-                    <Picker.Item label="Novembro" value="10" />
-                    <Picker.Item label="Dezembro" value="11" />
-                </Picker>
+                <View style={styles.pickerContainer}>
+                    <Picker
+                        selectedValue={ano}
+                        onValueChange={setAno}
+                        style={styles.picker}
+                        dropdownIconColor="#000"
+                    >
+                        <Picker.Item label="Selecione o ano" value="" color="#999" />
+                        {(anos ?? []).map((a, idx) => {
+                            const year = typeof a === 'object'
+                                ? (a.ano ?? a.year ?? a.value ?? '')
+                                : a;
+
+                            return (
+                                <Picker.Item
+                                    key={idx}
+                                    label={year.toString()}
+                                    value={year.toString()}
+                                    color="#000"
+                                />
+                            );
+                        })}
+                    </Picker>
+                </View>
+
+                {/* Picker de Mês */}
+                <View style={styles.pickerContainer}>
+                    <Picker
+                        selectedValue={mes}
+                        onValueChange={setMes}
+                        style={styles.picker}
+                        dropdownIconColor="#000"
+                    >
+                        <Picker.Item label="Selecione o mês" value="" color="#999" />
+                        <Picker.Item label="Janeiro" value="0" />
+                        <Picker.Item label="Fevereiro" value="1" />
+                        <Picker.Item label="Março" value="2" />
+                        <Picker.Item label="Abril" value="3" />
+                        <Picker.Item label="Maio" value="4" />
+                        <Picker.Item label="Junho" value="5" />
+                        <Picker.Item label="Julho" value="6" />
+                        <Picker.Item label="Agosto" value="7" />
+                        <Picker.Item label="Setembro" value="8" />
+                        <Picker.Item label="Outubro" value="9" />
+                        <Picker.Item label="Novembro" value="10" />
+                        <Picker.Item label="Dezembro" value="11" />
+                    </Picker>
+                </View>
             </View>
 
             <TouchableOpacity style={styles.botaoNovaConta} onPress={() => setModalNovaContaVisible(true)}>
@@ -260,8 +312,12 @@ export default function App() {
                 visible={shareModalVisible}
                 onClose={() => setShareModalVisible(false)}
                 existingKey={sharedOrgKey}
-                onSave={(key) => setSharedOrgKey(key)}
+                onSave={(key) => {
+                    setSharedOrgKey(key);
+                    loadContas(); // atualiza a tabela com base na nova chave
+                }}
             />
+
 
         </View>
     );
@@ -277,10 +333,21 @@ function Resumo({ titulo, valor }) {
 }
 
 const styles = StyleSheet.create({
-    container: { marginTop: 20, padding: 10, backgroundColor: 'white' },
-    titulo: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
-    filtros: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-    picker: { flex: 1 },
+    container: { marginTop: 35, padding: 10, backgroundColor: 'white' },
+    titulo: { fontSize: 25, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+    filtros: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 10 },
+    pickerContainer: {
+        borderWidth: 1,
+        borderColor: '#999',
+        borderRadius: 5,
+        overflow: 'hidden',
+        width: '48%', // Deixa um pequeno espaço entre os Pickers
+    },
+    picker: {
+        width: '100%',
+        height: 50,
+        backgroundColor: '#fff',
+    },
     botaoNovaConta: { backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginVertical: 10 },
     textoBotao: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
     cards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

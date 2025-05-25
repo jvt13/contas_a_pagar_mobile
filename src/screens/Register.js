@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { getDados, postDados, putDados, deleteDados } from '../utils/services';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard
+} from 'react-native';
+import { postDados } from '../utils/services';
 
 export default function Register({ navigation }) {
   const [name, setName] = useState('');
@@ -8,22 +19,16 @@ export default function Register({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Função de registro usando async/await
   const handleRegister = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Erro', 'Preencha todos os campos.');
-      return;
+      return Alert.alert('Erro', 'Preencha todos os campos.');
     }
-
     setLoading(true);
     try {
-        console.log('Tentando cadastrar:', { name, email, password });
-        const userName = email.split('@')[0]; // Cria um nome de usuário a partir do e-mail
-
-      const response = await postDados('/auth/register', { name, userName, email, password});
-      // Supondo que postDados retorne um objeto { success: boolean, data?, message? }
-      if (response && response.success) {
-        Alert.alert('Sucesso', 'Conta criada com sucesso!', [
+      const userName = email.split('@')[0]; 
+      const response = await postDados('/auth/register', { name, userName, email, password });
+      if (response.success) {
+        Alert.alert('Sucesso', 'Usuário criada com sucesso!', [
           { text: 'OK', onPress: () => navigation.replace('Login') }
         ]);
       } else {
@@ -38,49 +43,64 @@ export default function Register({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Cadastrar Nova Conta</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.inner}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.title}>Cadastrar Nova Conta</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Nome"
-        value={name}
-        onChangeText={setName}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="E-mail"
-        keyboardType="email-address"
-        autoCapitalize="none"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Senha"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+          <TextInput
+            style={styles.input}
+            placeholder="Nome"
+            value={name}
+            onChangeText={setName}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="E-mail"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Senha"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
 
-      <TouchableOpacity
-        style={[styles.button, loading && { opacity: 0.6 }]}
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>{loading ? 'Cadastrando...' : 'Cadastrar'}</Text>
-      </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, loading && { opacity: 0.6 }]}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Cadastrando...' : 'Cadastrar'}
+            </Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={styles.linkText}>Já tenho uma conta</Text>
-      </TouchableOpacity>
-    </View>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <Text style={styles.linkText}>Já tenho uma conta</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  inner: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
     backgroundColor: '#f5f5f5',
@@ -115,5 +135,6 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#0066cc',
     textAlign: 'center',
+    marginTop: 10,
   },
 });

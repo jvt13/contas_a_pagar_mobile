@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { obterIdLimite, atualizarLimite, inserirLimite } from '../../hooks/useLimites';
+import { setStorageItem, getStorageItem } from '../../utils/util';
 
 
 export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarLimite, loadContas }) {
@@ -59,13 +60,16 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
         );
 
         try {
-            const id = await obterIdLimite(anoFinal, mesFinal);
+            const user = await getStorageItem('@userId');
+            const organization = await getStorageItem('@userKeyShareId')
+            const id = await obterIdLimite(anoFinal, mesFinal, organization);
+            console.log('ID: '+id)
             if (id) {
                 console.log('Limite convertido para BAckend:', limite);
                 await atualizarLimite(anoFinal, mesFinal, limite, id);
                 Alert.alert('Sucesso', 'Limite atualizado!');
             } else {
-                await inserirLimite(anoFinal, mesFinal, limite);
+                await inserirLimite(anoFinal, mesFinal, limite, user, organization);
                 Alert.alert('Sucesso', 'Limite inserido!');
             }
 
@@ -122,7 +126,7 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
                             <Picker
                                 selectedValue={ano}
                                 onValueChange={setAno}
-                                style={{ height: 50, width: '100%' }}
+                                style={{ height: 50, width: '100%', color: '#000' }}
                             >
                                 <Picker.Item label="Selecione o Ano" value="" />
                                 {anos.map((a, idx) => (
@@ -155,9 +159,11 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
                         placeholder="R$0,00"
                         style={{
                             borderBottomWidth: 1,
+                            borderBottomColor: '#000',
                             fontSize: 24,
                             padding: 10,
                             marginBottom: 20,
+                            color: '#000'
                         }}
                     />
 
@@ -196,6 +202,7 @@ const styles = StyleSheet.create({
         height: 50,
         width: '100%',
         borderColor: '#000',
+        color: '#000',
     },
     selectWrapper: {
         borderWidth: 1,
