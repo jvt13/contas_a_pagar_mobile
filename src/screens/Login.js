@@ -50,6 +50,7 @@ export default function Login({ navigation }) {
             const resp = await postDados('/auth/login', { email, password });
             if (resp.success) {
                 //Alert.alert('chave: '+ resp.data.userId)
+                console.log('ChaveId: '+ resp.data.key_share_id);
                 await setStorageItem('@userId', String(resp.data.userId));
                 await setStorageItem('@userKeyShare', String(resp.data.key_share));
                 await setStorageItem('@userKeyShareId', String(resp.data.key_share_id));

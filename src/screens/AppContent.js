@@ -6,7 +6,7 @@ import Modal_Nova_Conta from '../components/modal/modal-insert';
 import ModalConfig from '../components/modal/ModalConfig';
 import MenuHeader from '../components/MenuHeader';
 import useContas from '../hooks/useContas';
-import useCartoes from '../hooks/useCartoes';
+import useCartoes from '../hooks/useCartaoManager';
 import ModalGerenciarCartao from '../components/modal/ModalGerenciarCartao';
 import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
@@ -53,6 +53,7 @@ export default function App() {
     const [shareModalVisible, setShareModalVisible] = useState(false);
 
     const [sharedOrgKey, setSharedOrgKey] = useState('');
+    const [sharedOrgId, setSharedOrgId] = useState(''); // Se precisar do ID da organização compartilhada
 
 
     const { cartoes, getCartaoById } = useCartoes(); // ✅ correto
@@ -91,11 +92,11 @@ export default function App() {
     const [contaSelecionada, setContaSelecionada] = useState(null);
 
     useEffect(() => {
-        const carregarCartoes = async () => {
+        /*const carregarCartoes = async () => {
             const lista = await getCartoes();
             if (Array.isArray(lista)) setCartoes(lista);
         };
-        carregarCartoes();
+        carregarCartoes();*/
 
         getStorageItem('@userKeyShareId')
             .then(key => {

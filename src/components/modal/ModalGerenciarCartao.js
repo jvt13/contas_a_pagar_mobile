@@ -1,80 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
+import { loadCartoes, getCartaoById } from '../../hooks/useCartaoManager';
 import { getDados, postDados, deleteDados, putDados } from '../../utils/services';
+import { setStorageItem, getStorageItem } from '../../utils/util';
+import useCartaoManager from '../../hooks/useCartaoManager';
 
 export default function ModalGerenciarCartao({ visible, onClose }) {
-  const [form, setForm] = useState({
-    nome: '',
-    tipo_cartao: '',
-    vencimento: '',
-    dia_util: ''
-  });
-
-  const [cartoes, setCartoes] = useState([]);
-  const [editId, setEditId] = useState(null);
+  const {
+    form, setForm,
+    cartoes, setCartoes,
+    editId,
+    resetForm,
+    carregarCartoes,
+    handleAddOrEdit,
+    handleEditar,
+    handleExcluir
+  } = useCartaoManager();
 
   useEffect(() => {
+
+    const loadKeyShare = async () => {
+      const key_share = await getStorageItem('@userKeyShareId');
+      const user = await getStorageItem('@userId');
+      /*console.log('Chave de Organização:', key_share);
+      console.log('ID do Usuário:', user);*/
+
+      //setKey(key_share) || '';
+      setForm(prevForm => ({
+        ...prevForm,
+        conta_user: user || '',
+        organization: key_share || ''
+      }));
+      //console.log('Formulário inicial:', form);
+    }
+
     if (visible) {
-      carregarCartoes();
+      loadKeyShare(); // Carrega a chave de organização ao abrir o modal
+      carregarCartoes();  // 🔁 Recarrega os cartões ao abrir o modal
+    }else{
+      setCartoes([]); // Limpa a lista de cartões ao fechar o modal
+      resetForm(); // Reseta o formulário ao fechar o modal
     }
+
   }, [visible]);
-
-  const carregarCartoes = async () => {
-    try {
-      const res = await getDados('/get_cartoes');
-      if (res.success) {
-        setCartoes(res.data);
-      } else {
-        Alert.alert('Erro', 'Erro ao carregar cartões');
-      }
-    } catch (error) {
-      Alert.alert('Erro', 'Falha ao conectar com servidor');
-    }
-  };
-
-  const handleAddOrEdit = async () => {
-    if (!form.nome || !form.tipo_cartao || !form.vencimento || !form.dia_util) {
-      Alert.alert('Campos obrigatórios', 'Preencha todos os campos!');
-      return;
-    }
-
-    try {
-      if (editId) {
-        await putDados(`/update_cartao/${editId}`, form);
-        Alert.alert('Sucesso', 'Cartão atualizado com sucesso!');
-      } else {
-        console.log(form);
-        await postDados('/add_cartao', form);
-        Alert.alert('Sucesso', 'Cartão adicionado com sucesso!');
-      }
-      setForm({ nome: '', tipo_cartao: '', vencimento: '', dia_util: '' });
-      setEditId(null);
-      carregarCartoes();
-    } catch (error) {
-      Alert.alert('Erro', 'Erro ao salvar cartão');
-    }
-  };
-
-  const handleEditar = (cartao) => {
-    setForm({
-      nome: cartao.nome,
-      tipo_cartao: cartao.tipo_cartao,
-      vencimento: String(cartao.vencimento),
-      dia_util: String(cartao.dia_util)
-    });
-    setEditId(cartao.id);
-  };
-
-  const handleExcluir = async (id) => {
-    try {
-      await deleteDados(`/delete_cartao/${id}`);
-      Alert.alert('Sucesso', 'Cartão excluído com sucesso!');
-      carregarCartoes();
-    } catch (error) {
-      Alert.alert('Erro', 'Erro ao excluir cartão');
-    }
-  };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -97,7 +66,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
               style={styles.picker}
             >
-              <Picker.Item label="Selecione" value="" />
+              <Picker.Item label="Selecione" value="selecione" />
               <Picker.Item label="Crédito" value="credito" />
               <Picker.Item label="Débito" value="debito" />
             </Picker>

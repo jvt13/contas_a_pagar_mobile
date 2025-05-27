@@ -21,8 +21,16 @@ export default function ModalShareOrganization({
     const [key, setKey] = useState('');
 
     useEffect(() => {
+
+        const loadKeyShare = async () => {
+            const key_share = await getStorageItem('@userKeyShare');
+            if (key_share) {
+                setKey(key_share) || '';
+            }
+        }
+        
         if (visible) {
-            setKey(existingKey || '');
+            loadKeyShare();
         }
     }, [visible, existingKey]);
 
@@ -34,7 +42,7 @@ export default function ModalShareOrganization({
         }
         try {
             await postDados('/user/organization/share', { key, userId });
-            Alert.alert('Sucesso', 'Chave salva com sucesso!');
+            msgToast('Chave salva com sucesso!'); 
             onSave(key);
             onClose();
         } catch (err) {

@@ -14,7 +14,7 @@ const API_URL = Constants.expoConfig.extra.EXPO_PUBLIC_API_URL;
  */
 async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
   const url = `${API_URL}${path}`;
-  console.log(`[Interceptando] ${method} -> ${url}`);
+  console.log(`[Interceptando] ${method} -> ${url}`); 
 
   const init = {
     method,

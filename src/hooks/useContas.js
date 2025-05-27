@@ -11,13 +11,13 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
   const [totais, setTotais] = useState({
     total_limite: 0,
     total_contas: 0,
-    total_contas_pagas: 0,
+    total_contas_pagas: 0, 
     total_contas_pendentes: 0,
   });
 
   const loadContas = async () => {
     try { 
-      const organization = sharedOrgKey || await getStorageItem('@userKeyShareId');
+      const organization = await getStorageItem('@userKeyShareId') || sharedOrgKey; 
       //Alert.alert('Organization: '+organization)
       const data = await postDados('/dados_tab', { ano, mes, organization });
       if (data.success) {
@@ -92,7 +92,7 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
     } catch (err) {
       Alert.alert('Erro', 'Falha ao conectar com o servidor');
     }
-  };
+  }; 
 
   return {
     contas,
