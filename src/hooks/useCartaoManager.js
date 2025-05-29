@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
 import { getStorageItem, msgToast } from '../utils/util';
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export default function useCartaoManager() {
   const [form, setForm] = useState({
@@ -10,12 +11,12 @@ export default function useCartaoManager() {
     vencimento: '',
     dia_util: '',
     conta_user: '',
-    organization: ''
+    organization: '' 
   });
   const [cartoes, setCartoes] = useState([]);
   const [editId, setEditId] = useState(null);
 
-  const carregarCartoes = async () => {
+  const carregarCartoes = async () => { 
     try {
       const keyShareId = await getStorageItem('@userKeyShareId');
       if (!keyShareId) {
@@ -26,7 +27,7 @@ export default function useCartaoManager() {
       const res = await getDados(`/get_cartoes?orgaId=${keyShareId}`);
       if (res.success) {
         setCartoes(res.data);
-        console.log('Cartões carregados:', res.data);
+        //console.log('Cartões carregados:', res.data);
       } else {
         //Alert.alert('Atenção', res.mensagem || 'Erro ao carregar cartões');
         msgToast(res.mensagem || 'Erro ao carregar cartões', 'error');
@@ -86,6 +87,21 @@ export default function useCartaoManager() {
     }
   };
 
+  const getCartaoById = async (id) => {
+    try {
+      const res = await getDados(`/get_cartao_id/${id}`);
+      if (res.success) {
+        return res.data;
+      } else {
+        Alert.alert('Erro', 'Cartão não encontrado');
+        return null;
+      }
+    } catch (error) {
+      Alert.alert('Erro', 'Erro ao buscar cartão');
+      return null;
+    }
+  };
+
   const resetForm = () => {
     setForm({
       nome: '',
@@ -105,6 +121,7 @@ export default function useCartaoManager() {
     handleAddOrEdit,
     handleEditar,
     handleExcluir,
+    getCartaoById,
     resetForm,
   };
 }

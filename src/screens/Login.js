@@ -176,6 +176,7 @@ const styles = StyleSheet.create({
         borderRadius: 4,
         paddingHorizontal: 10,
         backgroundColor: '#fff',
+        color: '#000',
     },
     showButton: {
         marginLeft: 8,

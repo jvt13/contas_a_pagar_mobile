@@ -16,7 +16,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
     handleAddOrEdit,
     handleEditar,
     handleExcluir
-  } = useCartaoManager();
+  } = useCartaoManager(); 
 
   useEffect(() => {
 
@@ -66,7 +66,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
               style={styles.picker}
             >
-              <Picker.Item label="Selecione" value="selecione" />
+              <Picker.Item label="Selecione" value="selecione" style={{color: '#000'}} />
               <Picker.Item label="Crédito" value="credito" />
               <Picker.Item label="Débito" value="debito" />
             </Picker>

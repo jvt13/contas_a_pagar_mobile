@@ -92,11 +92,11 @@ export default function App() {
     const [contaSelecionada, setContaSelecionada] = useState(null);
 
     useEffect(() => {
-        /*const carregarCartoes = async () => {
+        const carregarCartoes = async () => {
             const lista = await getCartoes();
             if (Array.isArray(lista)) setCartoes(lista);
         };
-        carregarCartoes();*/
+        carregarCartoes();
 
         getStorageItem('@userKeyShareId')
             .then(key => {
@@ -115,7 +115,7 @@ export default function App() {
     }, []);
 
     const handleLongPress = (conta) => {
-        console.log('Conta selecionada:', conta);
+        //console.log('Conta selecionada:', conta.id);
         setContaSelecionada(conta);
         setModalAcoesVisible(true);
     };
@@ -133,15 +133,6 @@ export default function App() {
     };
 
     const editarConta = () => {
-        setForm({
-            nome: contaSelecionada.nome,
-            vencimento: contaSelecionada.vencimento,
-            valor: contaSelecionada.valor.toString(),
-            categoria: contaSelecionada.categoria,
-            tipo_cartao: parseInt(contaSelecionada.tipo_cartao)
-        });
-
-        console.log('Formulario:', form);
         setModalNovaContaVisible(true);
         setModalAcoesVisible(false);
     };
@@ -257,7 +248,7 @@ export default function App() {
             </View>
             {/* Modal */}
             {form && (
-                <Modal_Nova_Conta
+                /*<Modal_Nova_Conta
                     visible={modalNovaContaVisible}
                     onClose={() => setModalNovaContaVisible(false)}
                     form={form}
@@ -265,8 +256,20 @@ export default function App() {
                     valorBackend={valorBackend}
                     setValorBackend={setValorBackend}
                     onSave={() => salvarConta(form, setForm, modalNovaContaVisible)}
-                    cartoes={cartoes}
-                    getCartaoById={getCartaoById}
+                    /*cartoes={cartoes}
+                    getCartaoById={getCartaoById}*/
+                ///>
+                <Modal_Nova_Conta
+                    visible={modalNovaContaVisible}
+                    onClose={() => setModalNovaContaVisible(false)}
+                    onSuccess={() => {
+                        loadContas();              // recarrega a tabela
+                        setModalNovaContaVisible(false);
+                    }}
+                    ano={ano}
+                    mes={mes}
+                    contaSelecionada={contaSelecionada}
+                    setContaSelecionada={setContaSelecionada}
                 />
             )}
 

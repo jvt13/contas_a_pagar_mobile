@@ -13,7 +13,7 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
     total_contas: 0,
     total_contas_pagas: 0, 
     total_contas_pendentes: 0,
-  });
+  }); 
 
   const loadContas = async () => {
     try { 
@@ -21,6 +21,7 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
       //Alert.alert('Organization: '+organization)
       const data = await postDados('/dados_tab', { ano, mes, organization });
       if (data.success) {
+        //console.log('Contas carregadas:', data.contas);
         setAnos(data.anos || []);
         setContas(data.contas || []);
         setTotais({
@@ -59,16 +60,26 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
 
   const salvarConta = async () => {
 
-    if (!form.nome || !form.valor || !form.vencimento) {
+    console.log('SharedOrgKey:', sharedOrgKey.organization);
+    if(form.nome === '' || form.valor === '' || form.vencimento === '') {
       Alert.alert('Campos obrigatórios', 'Preencha nome, valor e vencimento');
       return;
     }
 
+    /*if (!form.nome || !form.valor || !form.vencimento) {
+      Alert.alert('Campos obrigatórios', 'Preencha nome, valor e vencimento');
+      return;
+    }*/
+
     const dados = {
       ...form,
+      organization: sharedOrgKey.organization,
+      valor: valorBackend.valor,
       ano,
       mes,
-    };
+    }; 
+
+    console.log('Dados a serem enviados:', dados);
 
     try {
       const res = await postDados('/form_conta', dados);

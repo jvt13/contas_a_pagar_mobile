@@ -4,21 +4,84 @@ import { View, Text, Modal, TextInput, TouchableOpacity, StyleSheet, Platform } 
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { formatarDataBR, aplicarMascaraValor, formatarMoeda } from '../../utils/util';
+import useCartaoManager from '../../hooks/useCartaoManager';
+import useNovaConta from '../../hooks/useNovaConta';
 
-export default function Modal_Nova_Conta({ visible, onClose, form, setForm, valorBackend, setValorBackend, onSave, cartoes, getCartaoById }) {
+export default function Modal_Nova_Conta({ visible, onClose, onSuccess, onSave, ano, mes, contaSelecionada, setContaSelecionada }) {
+
+    const [editarConta, setEditarConta] = useState(false);
+
+    const {
+        cartoes,
+        carregarCartoes,
+        setCartoes, // se quiser resetar manualmente
+        getCartaoById,
+    } = useCartaoManager();
+
+    const {
+        form,
+        setForm,
+        valorBackend,
+        setValorBackend,
+        salvarConta,
+    } = useNovaConta(ano, mes, onSuccess, editarConta);
+
+
+    const setValoresSelecionados = () => {
+        console.log('Conta selecionada:', contaSelecionada);
+        if (contaSelecionada) {
+            setEditarConta(true); // Define que estamos editando uma conta existente
+            // Preenche os campos com os dados da conta selecionada
+            setForm({
+                ...form,
+                id: contaSelecionada.id || '', // Preserva o ID para edição
+                tipo_cartao: parseInt(contaSelecionada.tipo_cartao) || '',
+                nome: contaSelecionada.nome || '',
+                categoria: contaSelecionada.categoria || '',
+                vencimento: contaSelecionada.vencimento || '',
+                valor: contaSelecionada.valor.toString() || '',
+            });
+            // Formata o valor para o backend
+            setValorBackend({ valor: contaSelecionada.valor });
+        }
+    }
+
+    const reseteForms_onClose = () => {
+        setForm({
+            tipo_cartao: '',
+            nome: '',
+            categoria: '',
+            vencimento: '',
+            valor: '',
+            conta_user: '',
+            organization: '',
+        }); // Reseta o formulário ao fechar o modal
+        setValorBackend(''); // Reseta o valor backend ao fechar o modal
+        console.log('Fechando modal');
+        setContaSelecionada(null); // Reseta a conta selecionada se não houver
+        setEditarConta(false); // Reseta o estado de edição ao fechar o modal
+        onClose(); // Fecha o modal
+    };
 
     useEffect(() => {
-        if (visible && form.valor && !form.valor.toString().startsWith('R$')) {
-            const valorFloat = parseFloat(form.valor);
-            const display = valorFloat.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
 
-            setForm(f => ({ ...f, valor: display }));
+        if (visible) {
+            setValoresSelecionados(); // Preenche os campos com os dados da conta selecionada, se houver
+            if (visible && form.valor && !form.valor.toString().startsWith('R$')) {
+                const valorFloat = parseFloat(form.valor);
+                const display = valorFloat.toLocaleString('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+
+                setForm(f => ({ ...f, valor: display }));
+            }
+
+            carregarCartoes(); // Recarrega os cartões ao abrir o modal
         }
+
     }, [visible]);
 
 
@@ -34,14 +97,22 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, valo
     };
 
     const trataSelect = async (id) => {
+        console.log('ID selecionado:', id);
         setForm(f => ({ ...f, tipo_cartao: id }));
         if (!id) return;
 
         const cartao = await getCartaoById(id);
-        console.log(cartao.vencimento);
+        console.log('Cartão obtido:', cartao);
         if (cartao?.vencimento) {
             const dataFormatada = formatarDataBR(cartao.vencimento); // ⬅ conversão
             setForm(f => ({ ...f, vencimento: dataFormatada }));
+        }
+    };
+
+    const salvar = async () => {
+        const success = await salvarConta();
+        if (success) {
+            reseteForms_onClose(); // Reseta o formulário e fecha o modal
         }
     };
 
@@ -127,11 +198,11 @@ export default function Modal_Nova_Conta({ visible, onClose, form, setForm, valo
                         </View>
                     </View>
 
-                    <TouchableOpacity onPress={onSave} style={styles.btnSalvar}>
+                    <TouchableOpacity onPress={salvar} style={styles.btnSalvar}>
                         <Text style={styles.btnText}>Salvar Conta</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity onPress={onClose} style={[styles.btnSalvar, { backgroundColor: '#ccc' }]}>
+                    <TouchableOpacity onPress={reseteForms_onClose} style={[styles.btnSalvar, { backgroundColor: '#ccc' }]}>
                         <Text style={[styles.btnText, { color: '#333' }]}>Cancelar</Text>
                     </TouchableOpacity>
                 </View>
