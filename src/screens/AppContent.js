@@ -180,18 +180,18 @@ export default function App() {
                         dropdownIconColor="#000"
                     >
                         <Picker.Item label="Selecione o mês" value="" color="#999" />
-                        <Picker.Item label="Janeiro" value="0" />
-                        <Picker.Item label="Fevereiro" value="1" />
-                        <Picker.Item label="Março" value="2" />
-                        <Picker.Item label="Abril" value="3" />
-                        <Picker.Item label="Maio" value="4" />
-                        <Picker.Item label="Junho" value="5" />
-                        <Picker.Item label="Julho" value="6" />
-                        <Picker.Item label="Agosto" value="7" />
-                        <Picker.Item label="Setembro" value="8" />
-                        <Picker.Item label="Outubro" value="9" />
-                        <Picker.Item label="Novembro" value="10" />
-                        <Picker.Item label="Dezembro" value="11" />
+                        <Picker.Item style={styles.item_mes} label="Janeiro" value="0" />
+                        <Picker.Item style={styles.item_mes} label="Fevereiro" value="1" />
+                        <Picker.Item style={styles.item_mes} label="Março" value="2" />
+                        <Picker.Item style={styles.item_mes} label="Abril" value="3" />
+                        <Picker.Item style={styles.item_mes} label="Maio" value="4" />
+                        <Picker.Item style={styles.item_mes} label="Junho" value="5" />
+                        <Picker.Item style={styles.item_mes} label="Julho" value="6" />
+                        <Picker.Item style={styles.item_mes} label="Agosto" value="7" />
+                        <Picker.Item style={styles.item_mes} label="Setembro" value="8" />
+                        <Picker.Item style={styles.item_mes} label="Outubro" value="9" />
+                        <Picker.Item style={styles.item_mes} label="Novembro" value="10" />
+                        <Picker.Item style={styles.item_mes} label="Dezembro" value="11" />
                     </Picker>
                 </View>
             </View>
@@ -352,6 +352,7 @@ const styles = StyleSheet.create({
         height: 50,
         backgroundColor: '#fff',
     },
+    item_mes: { color: '#000' },
     botaoNovaConta: { backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginVertical: 10 },
     textoBotao: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
     cards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

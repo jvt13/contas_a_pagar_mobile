@@ -5,7 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler'; // Importe isso
 
 import AppContent from './src/screens/AppContent';
-import ContasPagasScreen from './src/screens/ContasPagasScreen';
+import ContasPagas from './src/screens/ContasPagas';
 import Login from './src/screens/Login'; // Importe o Login
 import Register from './src/screens/Register'; // Importe o Register
 
@@ -33,7 +33,7 @@ export default function App() {
           />
           <Stack.Screen
             name="ContasPagas"
-            component={ContasPagasScreen}
+            component={ContasPagas}
             options={{ title: 'Contas Pagas' }}
           />
         </Stack.Navigator>

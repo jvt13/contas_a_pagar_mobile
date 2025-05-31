@@ -67,8 +67,8 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               style={styles.picker}
             >
               <Picker.Item label="Selecione" value="selecione" style={{color: '#000'}} />
-              <Picker.Item label="Crédito" value="credito" />
-              <Picker.Item label="Débito" value="debito" />
+              <Picker.Item label="Crédito" value="credito" style={{color: '#000'}} />
+              <Picker.Item label="Débito" value="debito" style={{color: '#000'}} />
             </Picker>
           </View>
 
