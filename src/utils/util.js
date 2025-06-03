@@ -83,3 +83,11 @@ export async function removeStorageItem(chave) {
     console.error(`Erro ao remover item do AsyncStorage [${chave}]:`, error);
   }
 }
+
+export async function removeAllStorageItems() {
+  try {
+    await AsyncStorage.clear();
+  } catch (error) {
+    console.error('Erro ao limpar AsyncStorage:', error);
+  }
+}

@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
+import { setStorageItem, getStorageItem, removeStorageItem, removeAllStorageItems, msgToast } from '../utils/util';
+
 export default function MenuHeader({ onOpenConfig }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const navigation = useNavigation();
@@ -22,6 +24,28 @@ export default function MenuHeader({ onOpenConfig }) {
     closeMenu();
     navigation.navigate(screenName);
   };
+
+  async function logout() {
+
+    try {
+      await removeAllStorageItems();
+
+      closeMenu();
+      msgToast('Logout realizado com sucesso!');
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+
+    } catch (error) {
+      console.error('Erro ao realizar logout:', error);
+      msgToast('Erro ao realizar logout. Tente novamente.');
+    }
+    // Implementar a lógica de logout aqui
+    // Exemplo: limpar AsyncStorage, redirecionar para a tela de login, etc.
+    console.log('Logout realizado');
+  }
 
   return (
     <View style={styles.headerContainer}>
@@ -43,7 +67,10 @@ export default function MenuHeader({ onOpenConfig }) {
           <View style={styles.menuContainer}>
             <MenuItem text="Home" onPress={() => handleNavigation('Home')} />
             <MenuItem text="Contas Pagas" onPress={() => handleNavigation('ContasPagas')} />
-            <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasPagar')} />
+            <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} />
+            <MenuItem text="Sair" onPress={() => {
+              logout();
+            }} />
           </View>
         </Pressable>
       </Modal>

@@ -10,7 +10,7 @@ import {
     Platform,
     ScrollView,
     TouchableWithoutFeedback,
-    Keyboard
+    Keyboard, Image
 } from 'react-native';
 import Constants from 'expo-constants';
 import { setStorageItem, getStorageItem } from '../utils/util';
@@ -25,6 +25,7 @@ export default function Login({ navigation }) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [hidePassword, setHidePassword] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
 
 
     const [request, response, promptAsync] = Google.useAuthRequest({
@@ -50,7 +51,7 @@ export default function Login({ navigation }) {
             const resp = await postDados('/auth/login', { email, password });
             if (resp.success) {
                 //Alert.alert('chave: '+ resp.data.userId)
-                console.log('ChaveId: '+ resp.data.key_share_id);
+                console.log('ChaveId: ' + resp.data.key_share_id);
                 await setStorageItem('@userId', String(resp.data.userId));
                 await setStorageItem('@userKeyShare', String(resp.data.key_share));
                 await setStorageItem('@userKeyShareId', String(resp.data.key_share_id));
@@ -103,17 +104,22 @@ export default function Login({ navigation }) {
                         <TextInput
                             style={[styles.input, { flex: 1 }]}
                             placeholder="Senha"
-                            secureTextEntry={hidePassword}
+                            secureTextEntry={!showPassword}
                             value={password}
                             onChangeText={setPassword}
                         />
                         <TouchableOpacity
-                            onPress={() => setHidePassword(!hidePassword)}
-                            style={styles.showButton}
+                            onPress={() => setShowPassword(prev => !prev)}
+                            style={styles.eyeButton}
                         >
-                            <Text style={styles.showButtonText}>
-                                {hidePassword ? 'Mostrar' : 'Ocultar'}
-                            </Text>
+                            <Image
+                                source={
+                                    showPassword
+                                        ? require('../../assets/img/ocultar.png')
+                                        : require('../../assets/img/mostrar.png')
+                                }
+                                style={styles.eyeIcon}
+                            />
                         </TouchableOpacity>
                     </View>
 
@@ -168,6 +174,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 15,
+    },
+    eyeButton: {
+        marginLeft: 8,
+        padding: 8,
+    },
+    eyeIcon: {
+        width: 24,   // largura do ícone
+        height: 24,  // altura do ícone
+        resizeMode: 'contain', // mantém proporção
     },
     input: {
         height: 48,

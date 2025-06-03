@@ -18,7 +18,7 @@ export default function Modal_Nova_Conta({ visible, onClose, onSuccess, onSave, 
         getCartaoById,
     } = useCartaoManager();
 
-    const {
+    const { 
         form,
         setForm,
         valorBackend,
