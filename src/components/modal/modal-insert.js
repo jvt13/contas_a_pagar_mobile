@@ -116,7 +116,6 @@ export default function Modal_Nova_Conta({ visible, onClose, onSuccess, onSave, 
         }
     };
 
-
     return (
         <Modal visible={visible} transparent animationType="slide">
             <View style={styles.modalContainer}>

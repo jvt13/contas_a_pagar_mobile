@@ -11,7 +11,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta) {
         vencimento: '',
         valor: '',
         conta_user: '',
-        organization: '',
+        organization: ''
     });
     const [valorBackend, setValorBackend] = useState('');
 

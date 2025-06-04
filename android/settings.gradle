@@ -37,3 +37,35 @@ expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 includeBuild(expoAutolinking.reactNativeGradlePlugin)
+
+// Checkbox
+include ':@react-native-community_checkbox'
+project(':@react-native-community_checkbox').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-community/checkbox/android')
+
+// DateTimePicker
+include ':@react-native-community_datetimepicker'
+project(':@react-native-community_datetimepicker').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-community/datetimepicker/android')
+
+// Picker
+include ':@react-native-picker_picker'
+project(':@react-native-picker_picker').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-picker/picker/android')
+
+// Gesture Handler
+include ':react-native-gesture-handler'
+project(':react-native-gesture-handler').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-gesture-handler/android')
+
+// Reanimated
+include ':react-native-reanimated'
+project(':react-native-reanimated').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-reanimated/android')
+
+// Safe Area Context
+include ':react-native-safe-area-context'
+project(':react-native-safe-area-context').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-safe-area-context/android')
+
+// Screens
+include ':react-native-screens'
+project(':react-native-screens').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-screens/android')
+
+// Edge-to-Edge (se existir essa pasta em node_modules)
+include ':react-native-edge-to-edge'
+project(':react-native-edge-to-edge').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-edge-to-edge/android')
