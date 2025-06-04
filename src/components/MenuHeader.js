@@ -90,13 +90,7 @@ export default function MenuHeader({ onOpenConfig }) {
         </Pressable>
       </Modal>
 
-      {/* Botão de configurações */}
-      <TouchableOpacity onPress={onOpenConfig}>
-        <Image
-          source={require('../../assets/settings_48x48.png')}
-          style={styles.settingsIcon}
-        />
-      </TouchableOpacity>
+
     </View>
   );
 }
