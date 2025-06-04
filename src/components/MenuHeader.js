@@ -9,6 +9,7 @@ import {
   Pressable
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { DrawerActions } from '@react-navigation/native';
 
 import { setStorageItem, getStorageItem, removeStorageItem, removeAllStorageItems, msgToast } from '../utils/util';
 
@@ -47,6 +48,13 @@ export default function MenuHeader({ onOpenConfig }) {
     console.log('Logout realizado');
   }
 
+  const handleOpenModal = () => {
+    closeMenu(); // fecha o menu antes de abrir o modal
+    //navigation.dispatch(DrawerActions.closeDrawer());
+    //navigation.closeDrawer(); // fecha o menu lateral
+    onOpenConfig(); // chama a função passada como prop para abrir o modal de configurações
+  };
+
   return (
     <View style={styles.headerContainer}>
       {/* Botão do menu hamburguer */}
@@ -71,6 +79,13 @@ export default function MenuHeader({ onOpenConfig }) {
             <MenuItem text="Sair" onPress={() => {
               logout();
             }} />
+            <MenuItem text="Central de Controle" onPress={handleOpenModal}>
+              <Image
+                source={require('../../assets/settings_48x48.png')}
+                style={{ width: 24, height: 24, marginRight: 10 }}
+              />
+            </MenuItem>
+
           </View>
         </Pressable>
       </Modal>
