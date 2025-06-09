@@ -13,7 +13,7 @@ import {
     Keyboard, Image
 } from 'react-native';
 import Constants from 'expo-constants';
-import { setStorageItem, getStorageItem } from '../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { postDados } from '../utils/services';
@@ -52,9 +52,10 @@ export default function Login({ navigation }) {
             if (resp.success) {
                 //Alert.alert('chave: '+ resp.data.userId)
                 console.log('ChaveId: ' + resp.data.key_share_id);
-                await setStorageItem('@userId', String(resp.data.userId));
-                await setStorageItem('@userKeyShare', String(resp.data.key_share));
-                await setStorageItem('@userKeyShareId', String(resp.data.key_share_id));
+                await AsyncStorage.setItem('@username', resp.data.username);
+                await AsyncStorage.setItem('@userId', String(resp.data.userId));
+                await AsyncStorage.setItem('@userKeyShare', String(resp.data.key_share));
+                await AsyncStorage.setItem('@userKeyShareId', String(resp.data.key_share_id));
 
                 Alert.alert('Sucesso', 'Login realizado com sucesso!', [
                     { text: 'OK', onPress: () => navigation.replace('Home') }

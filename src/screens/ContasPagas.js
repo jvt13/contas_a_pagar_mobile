@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import { getDados, postDados } from '../utils/services';
-import { getStorageItem } from '../utils/util';
+import { View, Text, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import * as util from '../utils/util';
+import CustomPicker from '../components/modal/CustomPicker';
+import { getDados } from '../utils/services';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ContasPagas() {
   const today = new Date();
@@ -11,25 +12,26 @@ export default function ContasPagas() {
   const [anosOptions, setAnosOptions] = useState([]);
   const [contasPagas, setContasPagas] = useState([]);
 
+  const calculaTotal = (contas) => {
+    return contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
+  };
+
+  const limiteDoMes = 5000; // Exemplo fixo para teste
+
   const loadContasPagas = async () => {
     try {
-      //console.log('Carregando contas pagas para:', ano, mes); // Debugging line
-      const organization = await getStorageItem('@userKeyShareId');
-      //console.log('Organização:', organization); // Debugging line
+      const organization = await AsyncStorage.getItem('@userKeyShareId');
       const query = new URLSearchParams({ ano, mes, organization }).toString();
       const data = await getDados(`/contas_pagas?${query}`);
 
       if (data.success) {
-        console.log('Contas pagas carregadas:', data.contasPagas.length); // Debugging line
-        //console.log('Anos disponíveis:', data.anos); // Debugging line
         const anosArray = (data.anos || []).map(item =>
-          typeof item === 'object' ? item.ano : item
+          typeof item === 'object'
+            ? { label: item.ano.toString(), value: item.ano.toString() }
+            : { label: item.toString(), value: item.toString() }
         );
         setAnosOptions(anosArray);
-
-        //const pagas = (data.contas || []).filter(c => c.paga);
-        const pagas = data.contasPagas || [];
-        setContasPagas(pagas);
+        setContasPagas(data.contasPagas || []);
       } else {
         Alert.alert('Erro', data.message || 'Falha ao carregar contas pagas');
       }
@@ -44,84 +46,214 @@ export default function ContasPagas() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Contas Pagas</Text>
+      {/*<Text style={styles.titulo}>Contas Pagas</Text>}
+
       {/* Filtros de Ano e Mês */}
-      <View style={styles.filtros}>
-        <Picker
-          selectedValue={ano}
-          onValueChange={setAno}
-          style={styles.picker}
-          dropdownIconColor="#000"
-        >
-          {anosOptions.map((a, idx) => {
-            const year = typeof a === 'object' ? (a.ano ?? a.year ?? a.value ?? '') : a;
-            return (
-              <Picker.Item
-                key={idx}
-                label={year.toString()}
-                value={year.toString()}
-                color='#000'
-              />
-            );
-          })}
-        </Picker>
-        <Picker
-          selectedValue={mes}
-          onValueChange={setMes}
-          style={styles.picker}
-          dropdownIconColor="#000"
-        >
-          <Picker.Item label="Selecione o mês" value="" color="#999" />
-          <Picker.Item style={styles.item_mes} label="Janeiro" value="0" />
-          <Picker.Item style={styles.item_mes} label="Fevereiro" value="1" />
-          <Picker.Item style={styles.item_mes} label="Março" value="2" />
-          <Picker.Item style={styles.item_mes} label="Abril" value="3" />
-          <Picker.Item style={styles.item_mes} label="Maio" value="4" />
-          <Picker.Item style={styles.item_mes} label="Junho" value="5" />
-          <Picker.Item style={styles.item_mes} label="Julho" value="6" />
-          <Picker.Item style={styles.item_mes} label="Agosto" value="7" />
-          <Picker.Item style={styles.item_mes} label="Setembro" value="8" />
-          <Picker.Item style={styles.item_mes} label="Outubro" value="9" />
-          <Picker.Item style={styles.item_mes} label="Novembro" value="10" />
-          <Picker.Item style={styles.item_mes} label="Dezembro" value="11" />
-        </Picker>
+      <View style={[styles.filtros]}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.titulo_picker}>Ano:</Text>
+          <CustomPicker
+            selectedValue={ano}
+            onValueChange={setAno}
+            options={anosOptions}
+            placeholder="Selecione o ano"
+            style={styles.picker}
+          />
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.titulo_picker}>Mês:</Text>
+          <CustomPicker
+            selectedValue={mes}
+            onValueChange={setMes}
+            options={util.mesesOptions}
+            placeholder="Selecione o mês"
+            style={styles.picker}
+          />
+        </View>
       </View>
 
-      {/* Tabela de Contas Pagas */}
-      <View style={styles.tableHeader}>
-        <Text style={[styles.headerCell, { flex: 2 }]}>Nome</Text>
-        <Text style={styles.headerCell}>Cartão</Text>
-        <Text style={styles.headerCell}>Categoria</Text>
-        <Text style={styles.headerCell}>Vencimento</Text>
-        <Text style={styles.headerCell}>Valor</Text>
+
+      {/* Cards Resumo */}
+      <View style={styles.cards}>
+        <Resumo titulo="Valor Total Pago:" valor={calculaTotal(contasPagas)} />
+        <Resumo titulo="Limite do Mês:" valor={limiteDoMes} />
       </View>
 
-      <FlatList
-        data={contasPagas}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.row}>
-            <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>{item.nome}</Text>
-            <Text style={styles.cell}>{item.tipo_cartao}</Text>
-            <Text style={styles.cell}>{item.categoria}</Text>
-            <Text style={styles.cell}>{item.vencimento}</Text>
-            <Text style={styles.cell}>R$ {parseFloat(item.valor).toFixed(2).replace('.', ',')}</Text>
+      {/* Tabela */}
+      <View style={styles.tabelaContainer}>
+        <ScrollView horizontal>
+          <View style={{ minWidth: 500, maxWidth: 1000 }}>
+            {/* Cabeçalho da Tabela */}
+            <View style={styles.cabecalhoLinha}>
+              <Text style={[styles.cabecalho, { width: 120 }]}>Nome</Text>
+              <Text style={[styles.cabecalho, { width: 60 }]}>Cartão</Text>
+              <Text style={[styles.cabecalho, { width: 100 }]}>Categoria</Text>
+              <Text style={[styles.cabecalho, { width: 100 }]}>Vencimento</Text>
+              <Text style={[styles.cabecalho, { width: 100 }]}>Valor</Text>
+            </View>
+
+            <FlatList
+              data={contasPagas}
+              keyExtractor={item => item.id.toString()}
+              renderItem={({ item }) => (
+                <View style={[styles.itemCard, styles.itemCardPago]}>
+                  <View style={styles.itemContent}>
+                    <Text style={[styles.cell, { width: 120, textAlign: 'left' }]}>{item.nome}</Text>
+                    <Text style={[styles.cell, { width: 60 }]}>{item.tipo_cartao}</Text>
+                    <Text style={[styles.cell, { width: 100 }]}>{item.categoria}</Text>
+                    <Text style={[styles.cell, { width: 100 }]}>{item.vencimento}</Text>
+                    <Text style={[styles.cell, { width: 100 }]}>
+                      R$ {parseFloat(item.valor).toFixed(2).replace('.', ',')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              showsVerticalScrollIndicator
+              contentContainerStyle={{ paddingBottom: 20 }}
+            />
           </View>
-        )}
-        contentContainerStyle={styles.list}
-      />
+        </ScrollView>
+      </View>
     </View>
   );
+
+  function Resumo({ titulo, valor }) {
+    return (
+      <View style={styles.cardResumo}>
+        <Text style={styles.tituloResumo}>{titulo}</Text>
+        <Text style={styles.valorResumo}>R$ {parseFloat(valor).toFixed(2).replace('.', ',')}</Text>
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  titulo: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    backgroundColor: '#3b5998',
+    paddingVertical: 10,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+
   filtros: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  picker: { flex: 1, height: 50, marginHorizontal: 5 },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 2, borderColor: '#000', paddingBottom: 6, marginBottom: 4 },
-  headerCell: { flex: 1, fontWeight: 'bold', textAlign: 'center' },
-  row: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: 1, borderColor: '#ccc' },
-  cell: { flex: 1, textAlign: 'center' },
-  list: { paddingBottom: 20 }
+  //picker: { flex: 1, height: 50, marginHorizontal: 5, color: '#000' },
+  titulo_picker: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  picker: {
+    minWidth: 120,
+    height: 50,
+    marginHorizontal: 5,
+    color: '#000',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    justifyContent: 'center',
+  },
+
+  picker_item: {
+    color: '#000',
+  },
+  cards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginVertical: 10,
+  },
+  cardResumo: {
+    width: '48%',
+    backgroundColor: '#f0f8ff',
+    padding: 15,
+    borderRadius: 10,
+    marginVertical: 5,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  tituloResumo: {
+    fontSize: 14,
+    color: '#555',
+    marginBottom: 5,
+    textAlign: 'center',
+  },
+  valorResumo: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+  },
+  tabelaContainer: {
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    overflow: 'hidden',
+    flex: 1,
+  },
+  cabecalhoLinha: {
+    flexDirection: 'row',
+    //justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f0f8ff',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    marginBottom: 5,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  cabecalho: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  itemCard: {
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  itemCardPago: {
+    backgroundColor: '#e6ffe6', // Verde clarinho
+  },
+  itemContent: {
+    flexDirection: 'row',
+    //justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cell: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
 });

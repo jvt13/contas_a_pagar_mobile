@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { postDados } from '../utils/services';
-import { getStorageItem, msgToast } from '../utils/util';
+import { msgToast } from '../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function useNovaConta(ano, mes, onSuccess, editarConta) {
     const [form, setForm] = useState({
@@ -21,8 +22,8 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta) {
             return Alert.alert('Erro', 'Preencha todos os campos.');
         }
 
-        const organization = await getStorageItem('@userKeyShareId');
-        const userId = await getStorageItem('@userId');
+        const organization = await AsyncStorage.getItem('@userKeyShareId');
+        const userId = await AsyncStorage.getItem('@userId');
 
         if (!organization) {
             return Alert.alert('Erro', 'Organização não encontrada.');

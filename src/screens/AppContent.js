@@ -11,10 +11,11 @@ import ModalGerenciarCartao from '../components/modal/ModalGerenciarCartao';
 import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
 import { deleteDados } from '../utils/services'
-import { msgToast } from '../utils/util';
+import * as util from '../utils/util';
 import { LogBox } from 'react-native';
-import { setStorageItem, getStorageItem } from '../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ModalShareOrganization from '../components/modal/ModalShareOrganization';
+import { verificarAtualizacao } from '../utils/check_version';
 
 function CustomCheckBox({ value, onValueChange }) {
     return (
@@ -62,7 +63,7 @@ export default function App() {
 
 
     const screenHeight = Dimensions.get('window').height;
-    const alturaDisponivel = screenHeight - posicaoTabelaY - 38; // Calcular o tamanho que sobrou da tela para ficar no FlatList
+    const alturaDisponivel = screenHeight - posicaoTabelaY - 80; // Calcular o tamanho que sobrou da tela para ficar no FlatList
 
     const [form, setForm] = useState({
         nome: '',
@@ -92,13 +93,19 @@ export default function App() {
     const [contaSelecionada, setContaSelecionada] = useState(null);
 
     useEffect(() => {
+
+        async function verificar() { // Verifica atualizações ao carregar o componente
+            await verificarAtualizacao();
+        }
+        //verificar();
+
         const carregarCartoes = async () => {
             const lista = await getCartoes();
             if (Array.isArray(lista)) setCartoes(lista);
         };
         carregarCartoes();
 
-        getStorageItem('@userKeyShareId')
+        AsyncStorage.getItem('@userKeyShareId')
             .then(key => {
                 if (key) {
                     setSharedOrgKey(key);
@@ -111,7 +118,6 @@ export default function App() {
             })
             .catch(err => console.error('Erro lendo keyShare:', err));
 
-
     }, []);
 
     const handleLongPress = (conta) => {
@@ -123,7 +129,7 @@ export default function App() {
     const excluirConta = async () => {
         try {
             await deleteDados('/delete_conta/' + contaSelecionada.id);
-            msgToast('Conta excluída com sucesso!');
+            util.msgToast('Conta excluída com sucesso!');
             //Alert.alert('Sucesso', 'Conta excluída com sucesso!');
             loadContas(); // atualiza a lista
             setModalAcoesVisible(false);
@@ -209,10 +215,16 @@ export default function App() {
             </View>
 
             {/* Tabela */}
-            <View style={styles.tabela} onLayout={(event) => {
-                const { y } = event.nativeEvent.layout;
-                setPosicaoTabelaY(y);
-            }}>
+            <View
+                style={[
+                    styles.tabelaContainer,
+                    { height: alturaDisponivel || 400 } // Usar height para limitar e permitir rolagem
+                ]}
+                onLayout={(event) => {
+                    const { y } = event.nativeEvent.layout;
+                    setPosicaoTabelaY(y);
+                }}
+            >
                 <View style={styles.cabecalhoLinha}>
                     <Text style={styles.cabecalho}>Nome</Text>
                     <Text style={styles.cabecalho}>Vencimento</Text>
@@ -224,24 +236,33 @@ export default function App() {
                     data={contas}
                     keyExtractor={item => item.id.toString()}
                     renderItem={({ item }) => (
-                        <TouchableOpacity
-                            onLongPress={() => handleLongPress(item)}
-                            delayLongPress={300}
-                            style={styles.linha}
+                        <View
+                            style={[
+                                styles.itemCard,
+                                item.paga ? styles.itemCardPago : styles.itemCardPendente
+                            ]}
                         >
-                            <Text style={styles.coluna}>{item.nome}</Text>
-                            <Text style={styles.coluna}>{item.vencimento}</Text>
-                            <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
-                            <CustomCheckBox
-                                value={item.paga}
-                                onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
-                            />
-                        </TouchableOpacity>
+                            <TouchableOpacity
+                                onLongPress={() => handleLongPress(item)}
+                                delayLongPress={300}
+                                style={styles.itemContent}
+                            >
+                                <Text style={styles.coluna}>{item.nome}</Text>
+                                <Text style={styles.coluna}>{item.vencimento}</Text>
+                                <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
+                                <CustomCheckBox
+                                    value={item.paga}
+                                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
+                                />
+                            </TouchableOpacity>
+                        </View>
                     )}
-                    style={{ maxHeight: alturaDisponivel }}
+                    showsVerticalScrollIndicator={true}
+                    contentContainerStyle={{ paddingBottom: 20 }}
                 />
-
             </View>
+
+
 
             <View>
 
@@ -330,15 +351,33 @@ export default function App() {
 function Resumo({ titulo, valor }) {
     return (
         <View style={styles.cardResumo}>
-            <Text>{titulo}</Text>
-            <Text style={{ fontWeight: 'bold' }}>R$ {parseFloat(valor).toFixed(2).replace('.', ',')}</Text>
+            <Text style={styles.tituloResumo}>{titulo}</Text>
+            <Text style={styles.valorResumo}>R$ {parseFloat(valor).toFixed(2).replace('.', ',')}</Text>
         </View>
     );
 }
 
+
 const styles = StyleSheet.create({
     container: { marginTop: 35, padding: 10, backgroundColor: 'white' },
-    titulo: { fontSize: 25, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+    titulo: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#fff', // harmoniza com o header azul
+        textAlign: 'center',
+        marginBottom: 1,
+        textTransform: 'uppercase', // deixa tudo em caixa alta
+        letterSpacing: 1, // mais espaço entre letras
+        backgroundColor: '#3b5998', // mesmo azul do header
+        paddingVertical: 10,
+        borderRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        elevation: 4, // Android
+    },
+
     filtros: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 10 },
     pickerContainer: {
         borderWidth: 1,
@@ -358,32 +397,87 @@ const styles = StyleSheet.create({
     cards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     cardResumo: {
         width: '48%',
-        padding: 10,
-        backgroundColor: '#f0f8ff',
-        borderRadius: 8,
+        backgroundColor: '#f0f8ff',  //Cinza claro (#f7f7f7)
+        padding: 15,
+        borderRadius: 10,
         marginVertical: 5,
-        textAlign: 'center',
         alignItems: 'center',
+        elevation: 4, // sombra no Android
+        shadowColor: '#000', // sombra no iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
-    tabela: { marginTop: 20, borderWidth: 1, borderColor: '#ccc', borderRadius: 8, overflow: 'hidden' },
+    tituloResumo: {
+        fontSize: 14,
+        color: '#555',
+        marginBottom: 5,
+        textAlign: 'center',
+    },
+    valorResumo: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#333',
+        textAlign: 'center',
+    },
+
+    tabelaContainer: {
+        marginTop: 20,
+        borderWidth: 1,
+        borderColor: '#ccc',
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+
     cabecalhoLinha: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#f0f8ff', // Mesma cor dos cards ou outra cor suave
+        padding: 10,
+        borderRadius: 8,
+        marginTop: 10,
         marginBottom: 5,
-        borderTopWidth: 2,
-        borderBottomWidth: 2,
-        borderColor: '#000',
-        padding: 6,
+        elevation: 3, // Sombra Android
+        shadowColor: '#000', // Sombra iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
     },
-    cabecalho: { fontWeight: 'bold', width: '23%', color: '#000' },
-    linha: {
+    cabecalho: {
+        fontWeight: 'bold',
+        fontSize: 14,
+        color: '#333',
+        width: '23%',
+        textAlign: 'center',
+    },
+
+    itemCard: {
+        backgroundColor: '#fff',
+        padding: 10,
+        borderRadius: 8,
+        marginBottom: 10,
+        elevation: 3, // Android
+        shadowColor: '#000', // iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+    },
+    itemCardPago: {
+        backgroundColor: '#e6ffe6', // Verde clarinho
+    },
+    itemCardPendente: {
+        backgroundColor: '#fff3f3', // Vermelho clarinho
+    },
+    itemContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 0,
-        borderBottomWidth: 1,
-        borderColor: '#ccc',
-        paddingVertical: 8,
     },
-    coluna: { width: '23%' },
+    coluna: {
+        width: '23%',
+        fontSize: 14,
+        color: '#333',
+    },
+
 });

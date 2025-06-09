@@ -8,7 +8,7 @@ import {
     StyleSheet,
     Alert
 } from 'react-native';
-import { setStorageItem, getStorageItem } from '../../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postDados } from '../../utils/services';
 import { msgToast } from '../../utils/util';
 
@@ -23,7 +23,7 @@ export default function ModalShareOrganization({
     useEffect(() => {
 
         const loadKeyShare = async () => {
-            const key_share = await getStorageItem('@userKeyShare');
+            const key_share = await AsyncStorage.getItem('@userKeyShare');
             if (key_share) {
                 setKey(key_share) || '';
             }
@@ -35,7 +35,7 @@ export default function ModalShareOrganization({
     }, [visible, existingKey]);
 
     const handleSave = async () => {
-        const userId = await getStorageItem('@userId');
+        const userId = await AsyncStorage.getItem('@userId');
 
         if (!key.trim()) {
             return Alert.alert('Erro', 'Digite uma chave válida.');

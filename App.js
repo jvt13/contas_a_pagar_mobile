@@ -10,7 +10,7 @@ import ContasPagas from './src/screens/ContasPagas';
 import ContasAPagar from './src/screens/ContasAPagar';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
-import { getStorageItem } from './src/utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
@@ -22,7 +22,7 @@ export default function App() {
     async function checkUserLoggedIn() {
       try {
         // Lê o userId salvo no AsyncStorage
-        const userId = await getStorageItem('@userId');
+        const userId = await AsyncStorage.getItem('@userId');
         if (userId) {
           setInitialRoute('Home');
         } else {

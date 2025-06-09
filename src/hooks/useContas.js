@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { postDados } from '../utils/services';
 import { msgToast } from '../utils/util';
-import { setStorageItem, getStorageItem } from '../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBackend, setValorBackend, setModalVisible) {
   const [anos, setAnos] = useState([]);
@@ -17,12 +17,19 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
 
   const loadContas = async () => {
     try { 
-      const organization = await getStorageItem('@userKeyShareId') || sharedOrgKey; 
+      const organization = await AsyncStorage.getItem('@userKeyShareId') || sharedOrgKey; 
       //Alert.alert('Organization: '+organization)
       const data = await postDados('/dados_tab', { ano, mes, organization });
       if (data.success) {
         //console.log('Contas carregadas:', data.contas);
-        setAnos(data.anos || []);
+
+        const anosArray = (data.anos || []).map(item =>
+          typeof item === 'object'
+            ? { label: item.ano.toString(), value: item.ano.toString() }
+            : { label: item.toString(), value: item.toString() }
+        );
+
+        setAnos(anosArray || []);
         setContas(data.contas || []);
         setTotais({
           total_limite: data.total_limite,

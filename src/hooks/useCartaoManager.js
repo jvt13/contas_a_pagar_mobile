@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
-import { getStorageItem, msgToast } from '../utils/util';
+import { msgToast } from '../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export default function useCartaoManager() {
@@ -18,7 +19,7 @@ export default function useCartaoManager() {
 
   const carregarCartoes = async () => { 
     try {
-      const keyShareId = await getStorageItem('@userKeyShareId');
+      const keyShareId = await AsyncStorage.getItem('@userKeyShareId');
       if (!keyShareId) {
         Alert.alert('Erro', 'Chave de organização não encontrada');
         return;
