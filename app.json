@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.zevitor.controle_contas"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 6,
       "package": "com.zevitor.controle_contas",
       "adaptiveIcon": {
         "foregroundImage": "./assets/img/icon.png",
