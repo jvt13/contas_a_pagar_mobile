@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 import { Picker } from '@react-native-picker/picker';
 import { Dimensions } from 'react-native';
 import Modal_Nova_Conta from '../components/modal/modal-insert';
@@ -16,6 +17,7 @@ import { LogBox } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ModalShareOrganization from '../components/modal/ModalShareOrganization';
 import { verificarAtualizacao } from '../utils/check_version';
+import CustomPicker from '../components/modal/CustomPicker';
 
 function CustomCheckBox({ value, onValueChange }) {
     return (
@@ -46,6 +48,7 @@ export default function App() {
     const mes_atual = data.getMonth().toString();
     const [ano, setAno] = useState(ano_atual);
     const [mes, setMes] = useState(mes_atual); // Maio = 4
+    const [anosOptions, setAnosOptions] = useState([]);
 
     const [modalNovaContaVisible, setModalNovaContaVisible] = useState(false);
     const [modalConfigVisible, setModalConfigVisible] = useState(false);
@@ -60,10 +63,16 @@ export default function App() {
     const { cartoes, getCartaoById } = useCartoes(); // ✅ correto
 
     const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
-
+    const [alturaDisponivel, setAlturaDisponivel] = useState(400);
 
     const screenHeight = Dimensions.get('window').height;
-    const alturaDisponivel = screenHeight - posicaoTabelaY - 80; // Calcular o tamanho que sobrou da tela para ficar no FlatList
+
+    useEffect(() => {
+        if (posicaoTabelaY > 0) {
+            const novaAltura = screenHeight - posicaoTabelaY - 80;
+            setAlturaDisponivel(novaAltura);
+        }
+    }, [posicaoTabelaY, screenHeight]);
 
     const [form, setForm] = useState({
         nome: '',
@@ -150,61 +159,39 @@ export default function App() {
             <Text style={styles.titulo}>GERENCIAMENTO DE CONTAS</Text>
             <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
 
+            <TouchableOpacity style={styles.botaoNovaConta} onPress={() => setModalNovaContaVisible(true)}>
+                <Text style={styles.textoBotao}>
+                    <Text style={styles.textoBotao}>
+                        <Icon name="plus" size={16} color="#fff" /> Nova Conta
+                    </Text>
+
+                </Text>
+            </TouchableOpacity>
+
             {/* Filtros */}
             <View style={styles.filtros}>
                 <View style={styles.pickerContainer}>
-                    <Picker
+                    <CustomPicker
                         selectedValue={ano}
                         onValueChange={setAno}
+                        options={anos}
+                        placeholder="Selecione o ano"
                         style={styles.picker}
                         dropdownIconColor="#000"
-                    >
-                        <Picker.Item label="Selecione o ano" value="" color="#999" />
-                        {(anos ?? []).map((a, idx) => {
-                            const year = typeof a === 'object'
-                                ? (a.ano ?? a.year ?? a.value ?? '')
-                                : a;
-
-                            return (
-                                <Picker.Item
-                                    key={idx}
-                                    label={year.toString()}
-                                    value={year.toString()}
-                                    color="#000"
-                                />
-                            );
-                        })}
-                    </Picker>
+                    />
                 </View>
 
                 {/* Picker de Mês */}
                 <View style={styles.pickerContainer}>
-                    <Picker
+                    <CustomPicker
                         selectedValue={mes}
                         onValueChange={setMes}
+                        options={util.mesesOptions}
+                        placeholder="Selecione o mês"
                         style={styles.picker}
-                        dropdownIconColor="#000"
-                    >
-                        <Picker.Item label="Selecione o mês" value="" color="#999" />
-                        <Picker.Item style={styles.item_mes} label="Janeiro" value="0" />
-                        <Picker.Item style={styles.item_mes} label="Fevereiro" value="1" />
-                        <Picker.Item style={styles.item_mes} label="Março" value="2" />
-                        <Picker.Item style={styles.item_mes} label="Abril" value="3" />
-                        <Picker.Item style={styles.item_mes} label="Maio" value="4" />
-                        <Picker.Item style={styles.item_mes} label="Junho" value="5" />
-                        <Picker.Item style={styles.item_mes} label="Julho" value="6" />
-                        <Picker.Item style={styles.item_mes} label="Agosto" value="7" />
-                        <Picker.Item style={styles.item_mes} label="Setembro" value="8" />
-                        <Picker.Item style={styles.item_mes} label="Outubro" value="9" />
-                        <Picker.Item style={styles.item_mes} label="Novembro" value="10" />
-                        <Picker.Item style={styles.item_mes} label="Dezembro" value="11" />
-                    </Picker>
+                    />
                 </View>
             </View>
-
-            <TouchableOpacity style={styles.botaoNovaConta} onPress={() => setModalNovaContaVisible(true)}>
-                <Text style={styles.textoBotao}>+ Nova Conta</Text>
-            </TouchableOpacity>
 
             {/* Cards resumo */}
             <View style={styles.cards}>
@@ -378,10 +365,31 @@ const styles = StyleSheet.create({
         elevation: 4, // Android
     },
 
+    botaoNovaConta: {
+        backgroundColor: '#28a745',
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginVertical: 10,
+        alignItems: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 3,
+        marginTop: 5,
+        marginBottom: 10,
+
+    },
+    textoBotao: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
+
     filtros: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 10 },
     pickerContainer: {
-        borderWidth: 1,
-        borderColor: '#999',
+        /*borderWidth: 1,
+        borderColor: '#999',*/
         borderRadius: 5,
         overflow: 'hidden',
         width: '48%', // Deixa um pequeno espaço entre os Pickers
@@ -390,10 +398,17 @@ const styles = StyleSheet.create({
         width: '100%',
         height: 50,
         backgroundColor: '#fff',
+        borderRadius: 10,
+        marginVertical: 5,
+        alignItems: 'center',
+        elevation: 4, // sombra no Android
+        shadowColor: '#000', // sombra no iOS
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
     },
     item_mes: { color: '#000' },
-    botaoNovaConta: { backgroundColor: '#007bff', padding: 12, borderRadius: 6, marginVertical: 10 },
-    textoBotao: { color: 'white', textAlign: 'center', fontWeight: 'bold' },
+
     cards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
     cardResumo: {
         width: '48%',

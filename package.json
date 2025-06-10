@@ -6,7 +6,9 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "bump-android-vercode": "node -e \"const fs=require('fs');const file='app.json';const cfg=JSON.parse(fs.readFileSync(file));cfg.expo.android.versionCode=(cfg.expo.android.versionCode||0)+1;fs.writeFileSync(file,JSON.stringify(cfg,null,2));console.log('android.versionCode ➜',cfg.expo.android.versionCode);\"",
+    "bump-expo-version": "node -e \"const fs=require('fs');const file='app.json';const cfg=JSON.parse(fs.readFileSync(file));let parts=cfg.expo.version.split('.').map(n=>parseInt(n,10));parts[2]=(parts[2]||0)+1;cfg.expo.version=parts.join('.');fs.writeFileSync(file,JSON.stringify(cfg,null,2));console.log('expo.version ➜',cfg.expo.version);\""
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.1.2",

@@ -52,7 +52,14 @@ export default function Login({ navigation }) {
             if (resp.success) {
                 //Alert.alert('chave: '+ resp.data.userId)
                 console.log('ChaveId: ' + resp.data.key_share_id);
-                await AsyncStorage.setItem('@username', resp.data.username);
+                console.log('Username: ', resp.data.username)
+                const userName = resp.data.username
+                if (userName !== null && userName !== undefined) {
+                    await AsyncStorage.setItem('@username', userName);
+                } else {
+                    await AsyncStorage.removeItem('@username');
+                }
+
                 await AsyncStorage.setItem('@userId', String(resp.data.userId));
                 await AsyncStorage.setItem('@userKeyShare', String(resp.data.key_share));
                 await AsyncStorage.setItem('@userKeyShareId', String(resp.data.key_share_id));

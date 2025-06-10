@@ -89,6 +89,8 @@ const styles = StyleSheet.create({
     },
     pickerText: {
         color: '#000',
+        textAlign: 'center',
+        fontSize: 15
     },
     modalOverlay: {
         flex: 1,
@@ -100,7 +102,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 8,
         padding: 16,
-        maxHeight: '60%',
+        maxHeight: '70%',
     },
     optionItem: {
         paddingVertical: 12,

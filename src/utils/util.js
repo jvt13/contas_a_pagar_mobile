@@ -45,7 +45,6 @@ export const msgToast = (msg) => {
 };
 
 export const mesesOptions = [
-  { label: "Selecione um mês", value: "" },
   { label: "Janeiro", value: "0" },
   { label: "Fevereiro", value: "1" },
   { label: "Março", value: "2" },

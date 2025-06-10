@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ScrollView, Dimensions } from 'react-native';
 import * as util from '../utils/util';
 import CustomPicker from '../components/modal/CustomPicker';
 import { getDados } from '../utils/services';
@@ -11,6 +11,11 @@ export default function ContasPagas() {
   const [mes, setMes] = useState(today.getMonth().toString());
   const [anosOptions, setAnosOptions] = useState([]);
   const [contasPagas, setContasPagas] = useState([]);
+
+  const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
+  const [alturaDisponivel, setAlturaDisponivel] = useState(400);
+
+  const screenHeight = Dimensions.get('window').height;
 
   const calculaTotal = (contas) => {
     return contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
@@ -44,14 +49,20 @@ export default function ContasPagas() {
     loadContasPagas();
   }, [ano, mes]);
 
+  useEffect(() => {
+    if (posicaoTabelaY > 0) {
+      const novaAltura = screenHeight - posicaoTabelaY - 130;
+      setAlturaDisponivel(novaAltura);
+    }
+  }, [posicaoTabelaY, screenHeight]);
+
   return (
     <View style={styles.container}>
-      {/*<Text style={styles.titulo}>Contas Pagas</Text>}
 
       {/* Filtros de Ano e Mês */}
       <View style={[styles.filtros]}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.titulo_picker}>Ano:</Text>
+          
           <CustomPicker
             selectedValue={ano}
             onValueChange={setAno}
@@ -62,7 +73,7 @@ export default function ContasPagas() {
         </View>
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.titulo_picker}>Mês:</Text>
+          
           <CustomPicker
             selectedValue={mes}
             onValueChange={setMes}
@@ -73,7 +84,6 @@ export default function ContasPagas() {
         </View>
       </View>
 
-
       {/* Cards Resumo */}
       <View style={styles.cards}>
         <Resumo titulo="Valor Total Pago:" valor={calculaTotal(contasPagas)} />
@@ -81,7 +91,13 @@ export default function ContasPagas() {
       </View>
 
       {/* Tabela */}
-      <View style={styles.tabelaContainer}>
+      <View
+        style={[styles.tabelaContainer, { height: alturaDisponivel || 400 }]}
+        onLayout={(event) => {
+          const { y } = event.nativeEvent.layout;
+          setPosicaoTabelaY(y);
+        }}
+      >
         <ScrollView horizontal>
           <View style={{ minWidth: 500, maxWidth: 1000 }}>
             {/* Cabeçalho da Tabela */}
@@ -127,6 +143,8 @@ export default function ContasPagas() {
     );
   }
 }
+
+// ... (styles permanecem inalterados)
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#fff' },
@@ -209,7 +227,6 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 8,
     overflow: 'hidden',
-    flex: 1,
   },
   cabecalhoLinha: {
     flexDirection: 'row',

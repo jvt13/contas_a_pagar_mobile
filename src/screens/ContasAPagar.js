@@ -1,6 +1,6 @@
 // src/screens/ContasAPagar.js
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, Alert, ScrollView, Dimensions } from 'react-native';
 import * as util from '../utils/util';
 import CustomPicker from '../components/modal/CustomPicker';
 import { getDados } from '../utils/services';
@@ -12,6 +12,11 @@ export default function ContasAPagar() {
   const [mes, setMes] = useState(hoje.getMonth().toString());
   const [anosOptions, setAnosOptions] = useState([]);
   const [contasAPagar, setContasAPagar] = useState([]);
+
+  const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
+  const [alturaDisponivel, setAlturaDisponivel] = useState(400);
+
+  const screenHeight = Dimensions.get('window').height;
 
   const calculaTotal = (contas) => {
     return contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
@@ -54,6 +59,13 @@ export default function ContasAPagar() {
     loadContasAPagar();
   }, [ano, mes]);
 
+  useEffect(() => {
+    if (posicaoTabelaY > 0) {
+      const novaAltura = screenHeight - posicaoTabelaY - 130;
+      setAlturaDisponivel(novaAltura);
+    }
+  }, [posicaoTabelaY, screenHeight]);
+
   return (
     <View style={styles.container}>
       {/*<Text style={styles.title}>Contas a Pagar</Text>*/}
@@ -61,7 +73,6 @@ export default function ContasAPagar() {
       {/* Filtros de Ano e Mês */}
       <View style={styles.filtros}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.titulo_picker}>Ano:</Text>
           <CustomPicker
             selectedValue={ano}
             onValueChange={setAno}
@@ -73,7 +84,6 @@ export default function ContasAPagar() {
 
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.titulo_picker}>Mês:</Text>
           <CustomPicker
             selectedValue={mes}
             onValueChange={setMes}
@@ -92,7 +102,14 @@ export default function ContasAPagar() {
       </View>
 
 
-      <View style={styles.tabelaContainer}>
+      <View
+        style={[styles.tabelaContainer, { height: alturaDisponivel || 400 }]}
+        onLayout={(event) => {
+          const { y } = event.nativeEvent.layout;
+          setPosicaoTabelaY(y);
+        }}
+      >
+
         <ScrollView horizontal>
           <View style={{ minWidth: 500, maxWidth: 1000 }}>
             {/* Cabeçalho da Tabela */}
@@ -198,7 +215,6 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 8,
     overflow: 'hidden',
-    flex: 1,  // mantém a altura dinâmica
   },
 
   cabecalhoLinha: {
