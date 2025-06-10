@@ -2,7 +2,7 @@
   "expo": {
     "name": "OrganizeContas",
     "slug": "OrganizeContas",
-    "version": "1.0.3",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/img/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.zevitor.controle_contas"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 2,
       "package": "com.zevitor.controle_contas",
       "adaptiveIcon": {
         "foregroundImage": "./assets/img/icon.png",
