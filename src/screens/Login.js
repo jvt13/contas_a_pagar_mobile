@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { postDados } from '../utils/services';
+import * as util from '../utils/util';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -64,9 +65,10 @@ export default function Login({ navigation }) {
                 await AsyncStorage.setItem('@userKeyShare', String(resp.data.key_share));
                 await AsyncStorage.setItem('@userKeyShareId', String(resp.data.key_share_id));
 
-                Alert.alert('Sucesso', 'Login realizado com sucesso!', [
-                    { text: 'OK', onPress: () => navigation.replace('Home') }
-                ]);
+                util.msgToast('Login realizado com sucesso!')
+                setTimeout(() => {
+                    navigation.replace('Home');
+                }, 800);
             } else {
                 Alert.alert('Login falhou', resp.message || 'Verifique suas credenciais');
             }

@@ -2,7 +2,7 @@
   "expo": {
     "name": "controle_contas",
     "slug": "controle_contas",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/img/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.zevitor.controle_contas"
     },
     "android": {
-      "versionCode": 2,
+      "versionCode": 3,
       "package": "com.zevitor.controle_contas",
       "adaptiveIcon": {
         "foregroundImage": "./assets/img/icon.png",

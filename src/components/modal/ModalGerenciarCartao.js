@@ -3,8 +3,9 @@ import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, A
 import { Picker } from '@react-native-picker/picker';
 import { loadCartoes, getCartaoById } from '../../hooks/useCartaoManager';
 import { getDados, postDados, deleteDados, putDados } from '../../utils/services';
-import { setStorageItem, getStorageItem } from '../../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import useCartaoManager from '../../hooks/useCartaoManager';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 export default function ModalGerenciarCartao({ visible, onClose }) {
   const {
@@ -16,13 +17,13 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
     handleAddOrEdit,
     handleEditar,
     handleExcluir
-  } = useCartaoManager(); 
+  } = useCartaoManager();
 
   useEffect(() => {
 
     const loadKeyShare = async () => {
-      const key_share = await getStorageItem('@userKeyShareId');
-      const user = await getStorageItem('@userId');
+      const key_share = await AsyncStorage.getItem('@userKeyShareId');
+      const user = await AsyncStorage.getItem('@userId');
       /*console.log('Chave de Organização:', key_share);
       console.log('ID do Usuário:', user);*/
 
@@ -38,7 +39,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
     if (visible) {
       loadKeyShare(); // Carrega a chave de organização ao abrir o modal
       carregarCartoes();  // 🔁 Recarrega os cartões ao abrir o modal
-    }else{
+    } else {
       setCartoes([]); // Limpa a lista de cartões ao fechar o modal
       resetForm(); // Reseta o formulário ao fechar o modal
     }
@@ -47,8 +48,12 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
 
   return (
     <Modal visible={visible} transparent animationType="slide">
+
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
+          <TouchableOpacity onPress={onClose} style={styles.fechar}>
+            <Icon name="times" size={24} color="#000" />
+          </TouchableOpacity>
           <Text style={styles.title}>Gerenciar Cartão</Text>
 
           <Text style={styles.label}>Nome do Cartão:</Text>
@@ -66,9 +71,9 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
               style={styles.picker}
             >
-              <Picker.Item label="Selecione" value="selecione" style={{color: '#000'}} />
-              <Picker.Item label="Crédito" value="credito" style={{color: '#000'}} />
-              <Picker.Item label="Débito" value="debito" style={{color: '#000'}} />
+              <Picker.Item label="Selecione" value="selecione" style={{ color: '#000' }} />
+              <Picker.Item label="Crédito" value="credito" style={{ color: '#000' }} />
+              <Picker.Item label="Débito" value="debito" style={{ color: '#000' }} />
             </Picker>
           </View>
 
@@ -140,6 +145,11 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
 }
 
 const styles = StyleSheet.create({
+  fechar: {
+    position: 'absolute',
+    right: 12,
+    top: 10,
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
   modalContent: { backgroundColor: '#fff', padding: 20, width: '90%', borderRadius: 8 },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },

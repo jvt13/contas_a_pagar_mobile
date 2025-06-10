@@ -1,1 +1,0 @@
-set "EXPO_PUBLIC_API_URL=https://www.srv-jvt.com" && npm run bump-android-vercode && npm run bump-expo-version && npx eas build -p android --profile preview --clear-cache

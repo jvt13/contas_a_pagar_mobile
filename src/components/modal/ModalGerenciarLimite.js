@@ -10,7 +10,9 @@ import {
 } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { obterIdLimite, atualizarLimite, inserirLimite } from '../../hooks/useLimites';
-import { setStorageItem, getStorageItem } from '../../utils/util';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import * as util from '../../utils/util'
 
 
 export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarLimite, loadContas }) {
@@ -60,17 +62,19 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
         );
 
         try {
-            const user = await getStorageItem('@userId');
-            const organization = await getStorageItem('@userKeyShareId')
+            const user = await AsyncStorage.getItem('@userId');
+            const organization = await AsyncStorage.getItem('@userKeyShareId')
             const id = await obterIdLimite(anoFinal, mesFinal, organization);
             console.log('ID: '+id)
             if (id) {
                 console.log('Limite convertido para BAckend:', limite);
                 await atualizarLimite(anoFinal, mesFinal, limite, id);
-                Alert.alert('Sucesso', 'Limite atualizado!');
+                //Alert.alert('Sucesso', 'Limite atualizado!');
+                util.msgToast('Limite atualizado!');
             } else {
                 await inserirLimite(anoFinal, mesFinal, limite, user, organization);
-                Alert.alert('Sucesso', 'Limite inserido!');
+                //Alert.alert('Sucesso', 'Limite inserido!');
+                util.msgToast('Limite inserido!');
             }
 
             if (typeof loadContas === 'function') loadContas();
@@ -100,9 +104,9 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
     return (
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.overlay}>
-                <View style={styles.container}>
+                <View style={styles.container}> 
                     <TouchableOpacity onPress={onClose} style={styles.fechar}>
-                        <Text style={styles.closeText}>X</Text>
+                        <Icon name="times" size={24} color="#000" />
                     </TouchableOpacity>
                     <Text style={styles.title}>Gerenciar Limite</Text>
 
@@ -235,7 +239,7 @@ const styles = StyleSheet.create({
     },
 
     btnSalvar: {
-        backgroundColor: '#007bff',
+        backgroundColor: '#28a745',
         padding: 12,
         borderRadius: 6,
         marginTop: 10,
