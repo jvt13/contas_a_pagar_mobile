@@ -9,7 +9,7 @@ if errorlevel 1 goto erro
 
 REM — Incrementa o expo.version (patch)
 echo 🚀 Bumping expo version (patch)...
-call npm version patch --no-git-tag-version
+call npm run bump-expo-version
 if errorlevel 1 goto erro
 
 REM — Inicia o build remoto EAS
