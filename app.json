@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "controle_contas",
-    "slug": "controle_contas",
-    "version": "1.0.3",
+    "slug": "OrganizeContas",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/img/icon.png",
     "userInterfaceStyle": "light",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/img/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#3b5998"
+      "backgroundColor": "#ffffff"
     },
     "cli": {
       "appVersionSource": "project"
@@ -21,7 +21,7 @@
       "bundleIdentifier": "com.zevitor.controle_contas"
     },
     "android": {
-      "versionCode": 3,
+      "versionCode": 4,
       "package": "com.zevitor.controle_contas",
       "adaptiveIcon": {
         "foregroundImage": "./assets/img/icon.png",
