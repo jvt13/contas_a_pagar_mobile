@@ -1,47 +1,50 @@
-// src/hooks/useContas.js
 import { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { postDados } from '../utils/services';
-import { msgToast } from '../utils/util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { postDados } from '../utils/services';
+import { obterMensagemErro } from '../utils/util';
 
-export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBackend, setValorBackend, setModalVisible) {
+export default function useContas(ano, mes, sharedOrgKey) {
   const [anos, setAnos] = useState([]);
   const [contas, setContas] = useState([]);
   const [totais, setTotais] = useState({
     total_limite: 0,
     total_contas: 0,
-    total_contas_pagas: 0, 
+    total_contas_pagas: 0,
     total_contas_pendentes: 0,
-  }); 
+  });
+  const [loading, setLoading] = useState(false);
 
   const loadContas = async () => {
-    try { 
-      const organization = await AsyncStorage.getItem('@userKeyShareId') || sharedOrgKey; 
-      //Alert.alert('Organization: '+organization)
+    setLoading(true);
+
+    try {
+      const organization = (await AsyncStorage.getItem('@userKeyShareId')) || sharedOrgKey;
       const data = await postDados('/dados_tab', { ano, mes, organization });
-      if (data.success) {
-        //console.log('Contas carregadas:', data.contas);
 
-        const anosArray = (data.anos || []).map(item =>
-          typeof item === 'object'
-            ? { label: item.ano.toString(), value: item.ano.toString() }
-            : { label: item.toString(), value: item.toString() }
-        );
-
-        setAnos(anosArray || []);
-        setContas(data.contas || []);
-        setTotais({
-          total_limite: data.total_limite,
-          total_contas: data.total_contas,
-          total_contas_pagas: data.total_contas_pagas,
-          total_contas_pendentes: data.total_contas_pendentes,
-        });
-      } else {
-        Alert.alert('Erro', data.message || 'Erro ao carregar dados');
+      if (!data?.success) {
+        Alert.alert('Erro', data?.message || 'Erro ao carregar dados.');
+        return;
       }
-    } catch {
-      Alert.alert('Erro', 'Falha na conexão com servidor');
+
+      const anosArray = (data.anos || []).map((item) =>
+        typeof item === 'object'
+          ? { label: item.ano.toString(), value: item.ano.toString() }
+          : { label: item.toString(), value: item.toString() }
+      );
+
+      setAnos(anosArray);
+      setContas(data.contas || []);
+      setTotais({
+        total_limite: data.total_limite || 0,
+        total_contas: data.total_contas || 0,
+        total_contas_pagas: data.total_contas_pagas || 0,
+        total_contas_pendentes: data.total_contas_pendentes || 0,
+      });
+    } catch (error) {
+      Alert.alert('Erro', obterMensagemErro(error, 'Falha na conexão com o servidor.'));
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -52,72 +55,25 @@ export default function useContas(ano, mes, form, sharedOrgKey, setForm, valorBa
   const marcarComoPaga = async (index, paga) => {
     try {
       const data = await postDados('/marcar-paga', { mes, index, paga });
-      if (data.success) {
-        setContas(prev =>
-          prev.map(c => (c.id === index ? { ...c, paga } : c))
-        );
-        loadContas();
-      } else {
+
+      if (!data?.success) {
         Alert.alert('Erro', 'Não foi possível atualizar o status.');
+        return;
       }
-    } catch {
-      Alert.alert('Erro', 'Erro de comunicação com o servidor.');
+
+      setContas((prev) => prev.map((conta) => (conta.id === index ? { ...conta, paga } : conta)));
+      loadContas();
+    } catch (error) {
+      Alert.alert('Erro', obterMensagemErro(error, 'Erro de comunicação com o servidor.'));
     }
   };
-
-  const salvarConta = async () => {
-
-    console.log('SharedOrgKey:', sharedOrgKey.organization);
-    if(form.nome === '' || form.valor === '' || form.vencimento === '') {
-      Alert.alert('Campos obrigatórios', 'Preencha nome, valor e vencimento');
-      return;
-    }
-
-    /*if (!form.nome || !form.valor || !form.vencimento) {
-      Alert.alert('Campos obrigatórios', 'Preencha nome, valor e vencimento');
-      return;
-    }*/
-
-    const dados = {
-      ...form,
-      organization: sharedOrgKey.organization,
-      valor: valorBackend.valor,
-      ano,
-      mes,
-    }; 
-
-    console.log('Dados a serem enviados:', dados);
-
-    try {
-      const res = await postDados('/form_conta', dados);
-
-      if (res.success) {
-        //Alert.alert('Sucesso', 'Conta adicionada!');
-        msgToast('Conta adicionada com sucesso!')
-        setForm({
-          nome: '',
-          vencimento: '',
-          valor: '',
-          categoria: '',
-          tipo_cartao: '',
-          organization: '',
-        });
-        setModalVisible(false);
-        loadContas();
-      } else {
-        Alert.alert('Erro', res.message || 'Erro ao adicionar conta');
-      }
-    } catch (err) {
-      Alert.alert('Erro', 'Falha ao conectar com o servidor');
-    }
-  }; 
 
   return {
     contas,
     totais,
     anos,
+    loading,
     loadContas,
     marcarComoPaga,
-    salvarConta,
   };
 }

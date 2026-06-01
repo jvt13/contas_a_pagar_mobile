@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,9 +9,12 @@ import {
   Platform,
   ScrollView,
   TouchableWithoutFeedback,
-  Keyboard
+  Keyboard,
+  View,
+  ActivityIndicator,
 } from 'react-native';
 import { postDados } from '../utils/services';
+import * as util from '../utils/util';
 
 export default function Register({ navigation }) {
   const [name, setName] = useState('');
@@ -19,24 +22,44 @@ export default function Register({ navigation }) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const emailNormalizado = useMemo(() => util.sanitizeEmail(email), [email]);
+
   const handleRegister = async () => {
-    if (!name || !email || !password) {
-      return Alert.alert('Erro', 'Preencha todos os campos.');
+    if (!name.trim() || !emailNormalizado || !password.trim()) {
+      Alert.alert('Erro', 'Preencha todos os campos.');
+      return;
     }
+
+    if (password.trim().length < 4) {
+      Alert.alert('Erro', 'A senha precisa ter pelo menos 4 caracteres.');
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const userName = email.split('@')[0]; 
-      const response = await postDados('/auth/register', { name, userName, email, password });
-      if (response.success) {
-        Alert.alert('Sucesso', 'Usuário criada com sucesso!', [
-          { text: 'OK', onPress: () => navigation.replace('Login') }
-        ]);
-      } else {
-        Alert.alert('Cadastro falhou', response.message || 'Tente novamente.');
+      const userName = name.trim() || emailNormalizado.split('@')[0];
+      const response = await postDados(
+        '/auth/register',
+        {
+          name: name.trim(),
+          userName,
+          email: emailNormalizado,
+          password,
+        },
+        { auth: false }
+      );
+
+      if (!response?.success) {
+        Alert.alert('Cadastro falhou', response?.message || 'Tente novamente.');
+        return;
       }
+
+      util.msgToast('Conta criada com sucesso!');
+      navigation.replace('Login');
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      Alert.alert('Erro', error.message || 'Ocorreu um erro ao cadastrar.');
+      Alert.alert('Erro', util.obterMensagemErro(error, 'Ocorreu um erro ao cadastrar.'));
     } finally {
       setLoading(false);
     }
@@ -52,43 +75,59 @@ export default function Register({ navigation }) {
           contentContainerStyle={styles.inner}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.title}>Cadastrar Nova Conta</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="Nome"
-            value={name}
-            onChangeText={setName}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="E-mail"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <TouchableOpacity
-            style={[styles.button, loading && { opacity: 0.6 }]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            <Text style={styles.buttonText}>
-              {loading ? 'Cadastrando...' : 'Cadastrar'}
+          <View style={styles.card}>
+            <Text style={styles.title}>Criar conta</Text>
+            <Text style={styles.subtitle}>
+              Cadastre seu acesso para começar a organizar vencimentos, limites e cartões.
             </Text>
-          </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.linkText}>Já tenho uma conta</Text>
-          </TouchableOpacity>
+            <TextInput
+              style={styles.input}
+              placeholder="Nome"
+              placeholderTextColor="#7A869A"
+              value={name}
+              onChangeText={setName}
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail"
+              placeholderTextColor="#7A869A"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={setEmail}
+              editable={!loading}
+            />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Senha"
+              placeholderTextColor="#7A869A"
+              secureTextEntry
+              value={password}
+              onChangeText={setPassword}
+              editable={!loading}
+            />
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.buttonText}>Cadastrar</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => navigation.goBack()} disabled={loading}>
+              <Text style={styles.linkText}>Já tenho uma conta</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -98,43 +137,65 @@ export default function Register({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#EEF4FF',
   },
   inner: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 22,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 14,
+    elevation: 6,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#16324F',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: '#5D6F86',
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   input: {
-    height: 48,
-    borderColor: '#ccc',
+    height: 50,
+    borderColor: '#D7E0EF',
     borderWidth: 1,
-    borderRadius: 4,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    backgroundColor: '#F9FBFF',
+    color: '#0D1B2A',
   },
   button: {
-    backgroundColor: '#0066cc',
-    padding: 12,
-    borderRadius: 4,
+    backgroundColor: '#1E4DB7',
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
+    marginTop: 6,
+  },
+  buttonDisabled: {
+    opacity: 0.75,
   },
   buttonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   linkText: {
-    color: '#0066cc',
+    color: '#1E4DB7',
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 4,
+    fontWeight: '700',
   },
 });

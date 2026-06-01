@@ -1,75 +1,145 @@
-// utils/services.js
-// -------------------
-// Conexão dinâmica usando variável de ambiente definida em app.config.js/extra.
-
 import Constants from 'expo-constants';
+import { API_BASE_URL } from '../config/api';
+import { getAuthToken } from './authSession';
 
-// Pega a URL base do extra definido em app.config.js
-const API_URL = Constants.expoConfig.extra.EXPO_PUBLIC_API_URL;
+const API_URL = Constants.expoConfig?.extra?.EXPO_PUBLIC_API_URL || API_BASE_URL;
+const REQUEST_TIMEOUT = 15000;
 
-/**
- * Função genérica de requisição para o servidor.
- * @param {string} path   - endpoint relativo (ex: '/auth/login')
- * @param {object} opts   - método, body e headers
- */
-async function request(path, { method = 'GET', body = null, headers = {} } = {}) {
-  const url = `${API_URL}${path}`;
-  console.log(`[Interceptando] ${method} -> ${url}`); 
+/** URL efetiva da API (útil para diagnóstico). */
+export function getApiUrl() {
+  return API_URL;
+}
 
-  const init = {
-    method,
-    headers: { 'Content-Type': 'application/json', ...headers },
-    ...(body && { body: JSON.stringify(body) }),
-  };
+let unauthorizedHandler = null;
 
-  // Executa a requisição
-  const res = await fetch(url, init);
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = handler;
+}
 
-  // Tenta ler o JSON (pode ser sucesso ou erro)
-  let data;
-  try {
-    data = await res.json();
-  } catch (e) {
-    data = null;
+const getErrorMessage = (status, data) =>
+  data?.message || data?.mensagem || `Erro ${status}`;
+
+export function normalizeApiResponse(data) {
+  if (!data || typeof data !== 'object') {
+    return data;
   }
 
-  if (!res.ok) {
-    // Prioriza mensagem do backend, se existir
-    const errorMessage = data?.message || data?.mensagem || `Erro ${res.status}`;
-    console.warn(`[Erro ${res.status}] na URL: ${url} - ${errorMessage}`);
-    throw new Error(errorMessage);
+  if (data.success === undefined && data.sucess !== undefined) {
+    return { ...data, success: data.sucess };
   }
 
-  // Log de tamanho da resposta
-  const size = new TextEncoder().encode(JSON.stringify(data)).length;
-  console.log(`[Tamanho da resposta]: ${size} bytes`);
   return data;
 }
 
-// Atalhos para métodos HTTP
-export async function postDados(path, dados) {
-  return request(path, { method: 'POST', body: dados });
-}
-export async function putDados(path, dados) {
-  return request(path, { method: 'PUT', body: dados });
-}
-export async function getDados(path) {
-  return request(path, { method: 'GET' });
-}
-export async function deleteDados(path) {
-  return request(path, { method: 'DELETE' });
+async function buildHeaders(extraHeaders = {}, includeAuth = true) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Client': 'mobile',
+    ...extraHeaders,
+  };
+
+  if (includeAuth) {
+    const token = await getAuthToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  return headers;
 }
 
-// Agora, no frontend, basta capturar err.message no catch:
-// try {
-//   const response = await postDados('/auth/login', { email, password });
-// } catch (err) {
-//   Alert.alert('Login falhou', err.message);
-// }
+async function request(path, { method = 'GET', body = null, headers = {}, auth = true } = {}) {
+  if (!API_URL) {
+    throw new Error('API não configurada. Defina EXPO_PUBLIC_API_URL no .env ou src/config/api.js.');
+  }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+  const url = `${API_URL}${path}`;
 
-// Certifique-se de que em app.config.js você tenha:
-// extra: {
-//   ...config.extra,
-//   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://192.168.15.100:5000'
-// }
+  const init = {
+    method,
+    headers: await buildHeaders(headers, auth),
+    signal: controller.signal,
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  };
+
+  try {
+    const response = await fetch(url, init);
+
+    let data = null;
+    try {
+      data = await response.json();
+    } catch {
+      data = null;
+    }
+
+    data = normalizeApiResponse(data);
+
+    if (response.status === 401) {
+      if (unauthorizedHandler) {
+        unauthorizedHandler();
+      }
+      throw new Error(getErrorMessage(401, data) || 'Sessão expirada. Faça login novamente.');
+    }
+
+    if (response.status === 403) {
+      throw new Error(getErrorMessage(403, data) || 'Acesso negado.');
+    }
+
+    if (!response.ok) {
+      const apiError = new Error(getErrorMessage(response.status, data));
+      apiError.status = response.status;
+      apiError.path = path;
+      apiError.method = method;
+      apiError.apiMessage = getErrorMessage(response.status, data);
+
+      if (__DEV__) {
+        console.warn(`[API] ${method} ${url} -> ${response.status}`, data);
+      }
+
+      throw apiError;
+    }
+
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo de resposta do servidor esgotado. Tente novamente.');
+    }
+
+    if (error instanceof TypeError) {
+      const networkError = new Error(
+        `Falha de conexão com ${API_URL}. Verifique se o backend está ativo e o IP está correto.`
+      );
+      networkError.path = path;
+      networkError.method = method;
+      throw networkError;
+    }
+
+    if (__DEV__ && !error.path) {
+      error.path = path;
+      error.method = method;
+      console.warn(`[API] ${method} ${url} falhou:`, error.message);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+export async function postDados(path, dados, options = {}) {
+  return request(path, { method: 'POST', body: dados, ...options });
+}
+
+export async function putDados(path, dados, options = {}) {
+  return request(path, { method: 'PUT', body: dados, ...options });
+}
+
+export async function getDados(path, options = {}) {
+  return request(path, { method: 'GET', ...options });
+}
+
+export async function deleteDados(path, options = {}) {
+  return request(path, { method: 'DELETE', ...options });
+}

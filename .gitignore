@@ -9,7 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native (gerados por prebuild local — EAS gera na nuvem)
+android/
+ios/
 .kotlin/
 *.orig.*
 *.jks
@@ -31,7 +33,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# backend local secrets
+api-contas-a-pagar/.env
+api-contas-a-pagar/cert/
 
 # typescript
 *.tsbuildinfo

@@ -1,35 +1,45 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-gesture-handler';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { clearSession, hasValidSession } from './src/utils/authSession';
+import { setUnauthorizedHandler } from './src/utils/services';
 
 import AppContent from './src/screens/AppContent';
 import ContasPagas from './src/screens/ContasPagas';
 import ContasAPagar from './src/screens/ContasAPagar';
+import DashboardCartoes from './src/screens/DashboardCartoes';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('Login');
+  const navigationRef = React.useRef(null);
+
+  useEffect(() => {
+    setUnauthorizedHandler(async () => {
+      await clearSession();
+      if (navigationRef.current?.reset) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: 'Login' }],
+        });
+      }
+    });
+  }, []);
 
   useEffect(() => {
     async function checkUserLoggedIn() {
       try {
-        // Lê o userId salvo no AsyncStorage
-        const userId = await AsyncStorage.getItem('@userId');
-        if (userId) {
-          setInitialRoute('Home');
-        } else {
-          setInitialRoute('Login');
-        }
-      } catch (err) {
-        console.error('Erro ao verificar usuário logado:', err);
+        const loggedIn = await hasValidSession();
+        setInitialRoute(loggedIn ? 'Home' : 'Login');
+      } catch (error) {
+        console.error('Erro ao verificar usuário logado:', error);
         setInitialRoute('Login');
       } finally {
         setIsLoading(false);
@@ -39,18 +49,17 @@ export default function App() {
     checkUserLoggedIn();
   }, []);
 
-  // Enquanto estiver carregando, mostra um indicador de loading
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#1E4DB7" />
       </View>
     );
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
+    <GestureHandlerRootView style={styles.root}>
+      <NavigationContainer ref={navigationRef}>
         <Stack.Navigator initialRouteName={initialRoute}>
           <Stack.Screen
             name="Login"
@@ -77,8 +86,25 @@ export default function App() {
             component={ContasAPagar}
             options={{ title: 'Contas a Pagar' }}
           />
+          <Stack.Screen
+            name="DashboardCartoes"
+            component={DashboardCartoes}
+            options={{ title: 'Dashboard Cartões' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#EEF4FF',
+  },
+});

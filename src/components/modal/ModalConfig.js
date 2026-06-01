@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     StyleSheet,
 } from 'react-native';
+import { ModalCloseButton } from '../AppIcon';
 
 export default function ModalConfig({ visible, onClose, loadContas, abrirModalLimite, abrirModalGerenciar, abrirModalContrlOrga }) {
 
@@ -13,9 +14,7 @@ export default function ModalConfig({ visible, onClose, loadContas, abrirModalLi
         <Modal transparent visible={visible} animationType="fade">
             <View style={styles.backdrop}>
                 <View style={styles.modalContent}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Text style={styles.closeText}>X</Text>
-                    </TouchableOpacity>
+                    <ModalCloseButton onPress={onClose} style={styles.closeButton} color="#999" />
 
                     <Text style={styles.title}>Opções</Text>
 
@@ -71,5 +70,4 @@ const styles = StyleSheet.create({
         right: 10,
         zIndex: 10,
     },
-    closeText: { fontSize: 24, color: '#999' },
 });

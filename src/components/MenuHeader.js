@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons'; // Modern icons
 import { Animated } from 'react-native';
 
 import { msgToast } from '../utils/util';
+import { clearSession, STORAGE_KEYS } from '../utils/authSession';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MenuHeader({ onOpenConfig }) {
@@ -31,7 +32,7 @@ export default function MenuHeader({ onOpenConfig }) {
 
   async function logout() {
     try {
-      await AsyncStorage.clear();
+      await clearSession();
       closeMenu();
       msgToast('Logout realizado com sucesso!');
       navigation.reset({
@@ -63,7 +64,7 @@ export default function MenuHeader({ onOpenConfig }) {
   useEffect(() => {
     async function fetchUserName() {
       try {
-        const storedUserName = await AsyncStorage.getItem('@username');
+        const storedUserName = await AsyncStorage.getItem(STORAGE_KEYS.username);
         setUserName(storedUserName || 'Usuário');
       } catch (error) {
         console.error('Erro ao obter nome de usuário:', error);
@@ -119,6 +120,7 @@ export default function MenuHeader({ onOpenConfig }) {
         <Pressable style={styles.dropdownContainer} onPress={closeMenu}>
           <Animated.View style={[styles.dropdownMenu, { opacity: fadeAnim }]}>
             <MenuItem text="Home" onPress={() => handleNavigation('Home')} icon="home-outline" />
+            <MenuItem text="Dashboard Cartões" onPress={() => handleNavigation('DashboardCartoes')} icon="card-outline" />
             {/*<MenuItem text="Relatório" onPress={() => handleNavigation('Home')} icon="bar-chart-outline" /> */}
             <MenuItem text="Contas Pagas" onPress={() => handleNavigation('ContasPagas')} icon="checkmark-done-outline" />
             <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} icon="time-outline" />

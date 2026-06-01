@@ -1,498 +1,526 @@
-import React, { useState, useEffect } from 'react';
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import { Picker } from '@react-native-picker/picker';
-import { Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import AppIcon from '../components/AppIcon';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import Modal_Nova_Conta from '../components/modal/modal-insert';
 import ModalConfig from '../components/modal/ModalConfig';
 import MenuHeader from '../components/MenuHeader';
 import useContas from '../hooks/useContas';
+import useCategorias from '../hooks/useCategorias';
 import useCartoes from '../hooks/useCartaoManager';
 import ModalGerenciarCartao from '../components/modal/ModalGerenciarCartao';
 import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
-import { deleteDados } from '../utils/services'
-import * as util from '../utils/util';
-import { LogBox } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import ModalShareOrganization from '../components/modal/ModalShareOrganization';
+import { deleteDados } from '../utils/services';
+import { formatCurrency, mesesOptions, msgToast, obterMensagemErro } from '../utils/util';
+import {
+  contaPertenceGrupoParcela,
+  perguntarEscopoParcela,
+} from '../utils/parcelamento';
 import { verificarAtualizacao } from '../utils/check_version';
 import CustomPicker from '../components/modal/CustomPicker';
+import CategoriaLabel from '../components/categorias/CategoriaLabel';
 
 function CustomCheckBox({ value, onValueChange }) {
-    return (
-        <TouchableOpacity
-            onPress={() => onValueChange(!value)}
-            style={{
-                width: 20,
-                height: 20,
-                borderRadius: 3,
-                borderWidth: 1,
-                borderColor: '#333',
-                backgroundColor: value ? '#007bff' : 'white',
-                justifyContent: 'center',
-                alignItems: 'center',
-            }}
-        >
-            {value && <Text style={{ color: 'white', fontWeight: 'bold' }}>✓</Text>}
-        </TouchableOpacity>
-    );
+  return (
+    <TouchableOpacity
+      onPress={() => onValueChange(!value)}
+      style={[
+        styles.checkbox,
+        value ? styles.checkboxChecked : styles.checkboxUnchecked,
+      ]}
+    >
+      {value ? <AppIcon name="check" size={12} color="#fff" /> : null}
+    </TouchableOpacity>
+  );
 }
 
-export default function App() {
+export default function AppContent() {
+  const hoje = new Date();
+  const [ano, setAno] = useState(hoje.getFullYear().toString());
+  const [mes, setMes] = useState(hoje.getMonth().toString());
 
-    //LogBox.ignoreAllLogs();  //Uso para ignorar todos os logs de aviso (testes)
+  const [modalNovaContaVisible, setModalNovaContaVisible] = useState(false);
+  const [modalConfigVisible, setModalConfigVisible] = useState(false);
+  const [modalLimiteVisible, setModalLimiteVisible] = useState(false);
+  const [modalGerenciarVisible, setModalGerenciarVisible] = useState(false);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
-    const data = new Date();
-    const ano_atual = data.getFullYear().toString();
-    const mes_atual = data.getMonth().toString();
-    const [ano, setAno] = useState(ano_atual);
-    const [mes, setMes] = useState(mes_atual); // Maio = 4
-    const [anosOptions, setAnosOptions] = useState([]);
+  const [sharedOrgKey, setSharedOrgKey] = useState('');
+  const [contaSelecionada, setContaSelecionada] = useState(null);
+  const [modalAcoesVisible, setModalAcoesVisible] = useState(false);
+  const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
+  const [alturaDisponivel, setAlturaDisponivel] = useState(400);
 
-    const [modalNovaContaVisible, setModalNovaContaVisible] = useState(false);
-    const [modalConfigVisible, setModalConfigVisible] = useState(false);
-    const [modalLimiteVisible, setModalLimiteVisible] = useState(false);
-    const [modalGerenciarVisible, setModalGerenciarVisible] = useState(false);
-    const [shareModalVisible, setShareModalVisible] = useState(false);
+  const screenHeight = Dimensions.get('window').height;
+  const { carregarCartoes } = useCartoes();
+  const { contas, totais, anos, loading, loadContas, marcarComoPaga } = useContas(
+    ano,
+    mes,
+    sharedOrgKey
+  );
+  const { categorias } = useCategorias();
 
-    const [sharedOrgKey, setSharedOrgKey] = useState('');
-    const [sharedOrgId, setSharedOrgId] = useState(''); // Se precisar do ID da organização compartilhada
+  useEffect(() => {
+    if (posicaoTabelaY > 0) {
+      setAlturaDisponivel(screenHeight - posicaoTabelaY - 90);
+    }
+  }, [posicaoTabelaY, screenHeight]);
 
+  useEffect(() => {
+    async function carregarDadosIniciais() {
+      try {
+        await verificarAtualizacao();
+        await carregarCartoes();
 
-    const { cartoes, getCartaoById } = useCartoes(); // ✅ correto
-
-    const [posicaoTabelaY, setPosicaoTabelaY] = useState(0);
-    const [alturaDisponivel, setAlturaDisponivel] = useState(400);
-
-    const screenHeight = Dimensions.get('window').height;
-
-    useEffect(() => {
-        if (posicaoTabelaY > 0) {
-            const novaAltura = screenHeight - posicaoTabelaY - 80;
-            setAlturaDisponivel(novaAltura);
+        const key = await AsyncStorage.getItem('@userKeyShareId');
+        if (key) {
+          setSharedOrgKey(key);
         }
-    }, [posicaoTabelaY, screenHeight]);
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+      }
+    }
 
-    const [form, setForm] = useState({
-        nome: '',
-        vencimento: '',
-        valor: '',
-        categoria: '',
-        tipo_cartao: '',
-        organization: '',
-    });
+    carregarDadosIniciais();
+  }, []);
 
-    const [valorBackend, setValorBackend] = useState({
-        valor: '',
-    });
+  const cardsResumo = useMemo(
+    () => [
+      { titulo: 'Limite do mês', valor: formatCurrency(totais.total_limite), cor: '#E9F5FF' },
+      { titulo: 'Total de contas', valor: String(totais.total_contas || 0), cor: '#F1F8EC' },
+      { titulo: 'Contas pagas', valor: String(totais.total_contas_pagas || 0), cor: '#EAF9EF' },
+      { titulo: 'Pendentes', valor: String(totais.total_contas_pendentes || 0), cor: '#FFF3E8' },
+    ],
+    [totais]
+  );
 
-    const {
-        contas,
-        totais,
-        anos,
-        loadContas,
-        marcarComoPaga,
-        salvarConta,
-        getCartoes,
-    } = useContas(ano, mes, sharedOrgKey, form, setForm, valorBackend, setValorBackend, setModalNovaContaVisible);
+  const handleLongPress = (conta) => {
+    setContaSelecionada(conta);
+    setModalAcoesVisible(true);
+  };
 
-    /*Trata ModalContaAcoes */
-    const [modalAcoesVisible, setModalAcoesVisible] = useState(false);
-    const [contaSelecionada, setContaSelecionada] = useState(null);
+  const excluirConta = async () => {
+    if (!contaSelecionada?.id) {
+      return;
+    }
 
-    useEffect(() => {
+    let escopo = 'apenas_esta';
 
-        async function verificar() { // Verifica atualizações ao carregar o componente
-            await verificarAtualizacao();
-        }
-        //verificar();
+    if (contaPertenceGrupoParcela(contaSelecionada)) {
+      const escopoEscolhido = await perguntarEscopoParcela(
+        'Excluir ocorrência',
+        'Esta conta faz parte de um grupo (parcelamento/recorrência). Deseja excluir:'
+      );
+      if (!escopoEscolhido) {
+        return;
+      }
+      escopo = escopoEscolhido;
+    } else {
+      const confirmacao = await new Promise((resolve) => {
+        Alert.alert('Excluir conta', 'Deseja excluir esta conta?', [
+          { text: 'Cancelar', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Excluir', style: 'destructive', onPress: () => resolve(true) },
+        ]);
+      });
+      if (!confirmacao) {
+        return;
+      }
+    }
 
-        const carregarCartoes = async () => {
-            const lista = await getCartoes();
-            if (Array.isArray(lista)) setCartoes(lista);
-        };
-        carregarCartoes();
+    try {
+      await deleteDados(`/delete_conta/${contaSelecionada.id}?escopo=${escopo}`);
+      msgToast('Conta excluída com sucesso!');
+      setModalAcoesVisible(false);
+      setContaSelecionada(null);
+      loadContas();
+    } catch (error) {
+      Alert.alert('Erro', obterMensagemErro(error, 'Erro ao excluir a conta.'));
+    }
+  };
 
-        AsyncStorage.getItem('@userKeyShareId')
-            .then(key => {
-                if (key) {
-                    setSharedOrgKey(key);
-                    setForm(prevForm => ({
-                        ...prevForm,
-                        organization: key
-                    }));
+  const editarConta = () => {
+    setModalAcoesVisible(false);
+    setModalNovaContaVisible(true);
+  };
 
-                }
-            })
-            .catch(err => console.error('Erro lendo keyShare:', err));
+  return (
+    <View style={styles.container}>
+      <Text style={styles.titulo}>Gerenciamento de Contas</Text>
+      <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
 
-    }, []);
+      <TouchableOpacity
+        style={styles.botaoNovaConta}
+        onPress={() => {
+          setContaSelecionada(null);
+          setModalNovaContaVisible(true);
+        }}
+      >
+        <AppIcon name="plus" size={16} color="#fff" />
+        <Text style={styles.textoBotao}> Nova conta</Text>
+      </TouchableOpacity>
 
-    const handleLongPress = (conta) => {
-        //console.log('Conta selecionada:', conta.id);
-        setContaSelecionada(conta);
-        setModalAcoesVisible(true);
-    };
+      <View style={styles.filtros}>
+        <View style={styles.pickerContainer}>
+          <CustomPicker
+            selectedValue={ano}
+            onValueChange={setAno}
+            options={anos}
+            placeholder="Selecione o ano"
+            style={styles.picker}
+          />
+        </View>
 
-    const excluirConta = async () => {
-        try {
-            await deleteDados('/delete_conta/' + contaSelecionada.id);
-            util.msgToast('Conta excluída com sucesso!');
-            //Alert.alert('Sucesso', 'Conta excluída com sucesso!');
-            loadContas(); // atualiza a lista
-            setModalAcoesVisible(false);
-        } catch (err) {
-            Alert.alert('Erro', 'Erro ao excluir a conta');
-        }
-    };
+        <View style={styles.pickerContainer}>
+          <CustomPicker
+            selectedValue={mes}
+            onValueChange={setMes}
+            options={mesesOptions}
+            placeholder="Selecione o mês"
+            style={styles.picker}
+          />
+        </View>
+      </View>
 
-    const editarConta = () => {
-        setModalNovaContaVisible(true);
-        setModalAcoesVisible(false);
-    };
+      <View style={styles.cards}>
+        {cardsResumo.map((card) => (
+          <View key={card.titulo} style={[styles.cardResumo, { backgroundColor: card.cor }]}>
+            <Text style={styles.tituloResumo}>{card.titulo}</Text>
+            <Text style={styles.valorResumo}>{card.valor}</Text>
+          </View>
+        ))}
+      </View>
 
-    /*Fim ModalContaAcoes */
+      <View
+        style={[styles.tabelaContainer, { height: Math.max(alturaDisponivel, 280) }]}
+        onLayout={(event) => {
+          const { y } = event.nativeEvent.layout;
+          setPosicaoTabelaY(y);
+        }}
+      >
+        <View style={styles.tabelaHeader}>
+          <Text style={[styles.cabecalho, styles.nomeColuna]}>Nome</Text>
+          <Text style={styles.cabecalho}>Vencimento</Text>
+          <Text style={styles.cabecalho}>Valor</Text>
+          <Text style={styles.cabecalho}>Paga</Text>
+        </View>
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.titulo}>GERENCIAMENTO DE CONTAS</Text>
-            <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
-
-            <TouchableOpacity style={styles.botaoNovaConta} onPress={() => setModalNovaContaVisible(true)}>
-                <Text style={styles.textoBotao}>
-                    <Text style={styles.textoBotao}>
-                        <Icon name="plus" size={16} color="#fff" /> Nova Conta
-                    </Text>
-
-                </Text>
-            </TouchableOpacity>
-
-            {/* Filtros */}
-            <View style={styles.filtros}>
-                <View style={styles.pickerContainer}>
-                    <CustomPicker
-                        selectedValue={ano}
-                        onValueChange={setAno}
-                        options={anos}
-                        placeholder="Selecione o ano"
-                        style={styles.picker}
-                        dropdownIconColor="#000"
-                    />
-                </View>
-
-                {/* Picker de Mês */}
-                <View style={styles.pickerContainer}>
-                    <CustomPicker
-                        selectedValue={mes}
-                        onValueChange={setMes}
-                        options={util.mesesOptions}
-                        placeholder="Selecione o mês"
-                        style={styles.picker}
-                    />
-                </View>
-            </View>
-
-            {/* Cards resumo */}
-            <View style={styles.cards}>
-                <Resumo titulo="Limite mês:" valor={totais.total_limite} />
-                <Resumo titulo="Total de Contas:" valor={totais.total_contas} />
-                <Resumo titulo="Contas Pagas:" valor={totais.total_contas_pagas} />
-                <Resumo titulo="Contas Pendentes:" valor={totais.total_contas_pendentes} />
-            </View>
-
-            {/* Tabela */}
-            <View
+        {loading ? (
+          <View style={styles.feedbackContainer}>
+            <ActivityIndicator size="large" color="#1E4DB7" />
+            <Text style={styles.feedbackText}>Carregando contas...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={contas}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View
                 style={[
-                    styles.tabelaContainer,
-                    { height: alturaDisponivel || 400 } // Usar height para limitar e permitir rolagem
+                  styles.itemCard,
+                  item.paga ? styles.itemCardPago : styles.itemCardPendente,
                 ]}
-                onLayout={(event) => {
-                    const { y } = event.nativeEvent.layout;
-                    setPosicaoTabelaY(y);
-                }}
-            >
-                <View style={styles.cabecalhoLinha}>
-                    <Text style={styles.cabecalho}>Nome</Text>
-                    <Text style={styles.cabecalho}>Vencimento</Text>
-                    <Text style={styles.cabecalho}>Valor</Text>
-                    <Text style={styles.cabecalho}>Paga</Text>
-                </View>
-
-                <FlatList
-                    data={contas}
-                    keyExtractor={item => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <View
-                            style={[
-                                styles.itemCard,
-                                item.paga ? styles.itemCardPago : styles.itemCardPendente
-                            ]}
-                        >
-                            <TouchableOpacity
-                                onLongPress={() => handleLongPress(item)}
-                                delayLongPress={300}
-                                style={styles.itemContent}
-                            >
-                                <Text style={styles.coluna}>{item.nome}</Text>
-                                <Text style={styles.coluna}>{item.vencimento}</Text>
-                                <Text style={styles.coluna}>R$ {item.valor.toFixed(2).replace('.', ',')}</Text>
-                                <CustomCheckBox
-                                    value={item.paga}
-                                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
-                                />
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                    showsVerticalScrollIndicator={true}
-                    contentContainerStyle={{ paddingBottom: 20 }}
-                />
-            </View>
-
-
-
-            <View>
-
-            </View>
-            {/* Modal */}
-            {form && (
-                /*<Modal_Nova_Conta
-                    visible={modalNovaContaVisible}
-                    onClose={() => setModalNovaContaVisible(false)}
-                    form={form}
-                    setForm={setForm}
-                    valorBackend={valorBackend}
-                    setValorBackend={setValorBackend}
-                    onSave={() => salvarConta(form, setForm, modalNovaContaVisible)}
-                    /*cartoes={cartoes}
-                    getCartaoById={getCartaoById}*/
-                ///>
-                <Modal_Nova_Conta
-                    visible={modalNovaContaVisible}
-                    onClose={() => setModalNovaContaVisible(false)}
-                    onSuccess={() => {
-                        loadContas();              // recarrega a tabela
-                        setModalNovaContaVisible(false);
-                    }}
-                    ano={ano}
-                    mes={mes}
-                    contaSelecionada={contaSelecionada}
-                    setContaSelecionada={setContaSelecionada}
-                />
+              >
+                <TouchableOpacity
+                  onLongPress={() => handleLongPress(item)}
+                  delayLongPress={250}
+                  style={styles.itemContent}
+                >
+                  <View style={styles.nomeColuna}>
+                    <Text style={styles.itemTitulo} numberOfLines={1}>
+                      {item.nome}
+                    </Text>
+                    <CategoriaLabel
+                      categoriaId={item.categoria}
+                      categorias={categorias}
+                      textStyle={styles.itemCategoria}
+                    />
+                  </View>
+                  <Text style={styles.coluna}>{item.vencimento}</Text>
+                  <Text style={styles.coluna}>{formatCurrency(item.valor)}</Text>
+                  <CustomCheckBox
+                    value={!!item.paga}
+                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
+                  />
+                </TouchableOpacity>
+              </View>
             )}
+            ListEmptyComponent={
+              <View style={styles.feedbackContainer}>
+                <AppIcon name="inbox" size={24} color="#7B8BA3" />
+                <Text style={styles.feedbackText}>
+                  Nenhuma conta encontrada para o período selecionado.
+                </Text>
+              </View>
+            }
+            showsVerticalScrollIndicator
+            contentContainerStyle={styles.listaContent}
+          />
+        )}
+      </View>
 
-            <ModalConfig
-                visible={modalConfigVisible}
-                onClose={() => setModalConfigVisible(false)}
-                loadContas={loadContas}
-                abrirModalLimite={() => {
-                    setModalLimiteVisible(true);
-                    setModalConfigVisible(false);
-                }}
-                abrirModalGerenciar={() => {
-                    setModalGerenciarVisible(true);
-                    setModalConfigVisible(false);
-                }}
-                abrirModalContrlOrga={() => setShareModalVisible(true)}
-            />
+      <Modal_Nova_Conta
+        visible={modalNovaContaVisible}
+        onClose={() => setModalNovaContaVisible(false)}
+        onSuccess={(filtro) => {
+          if (filtro?.mes != null && filtro?.mes !== '') {
+            setMes(String(filtro.mes));
+          }
+          if (filtro?.ano) {
+            setAno(String(filtro.ano));
+          }
+          if (!filtro?.mes && !filtro?.ano) {
+            loadContas();
+          }
+          setModalNovaContaVisible(false);
+        }}
+        ano={ano}
+        mes={mes}
+        contaSelecionada={contaSelecionada}
+        setContaSelecionada={setContaSelecionada}
+      />
 
-            <ModalGerenciarCartao
-                visible={modalGerenciarVisible}
-                onClose={() => setModalGerenciarVisible(false)}
-            />
+      <ModalConfig
+        visible={modalConfigVisible}
+        onClose={() => setModalConfigVisible(false)}
+        loadContas={loadContas}
+        abrirModalLimite={() => {
+          setModalLimiteVisible(true);
+          setModalConfigVisible(false);
+        }}
+        abrirModalGerenciar={() => {
+          setModalGerenciarVisible(true);
+          setModalConfigVisible(false);
+        }}
+        abrirModalContrlOrga={() => {
+          setShareModalVisible(true);
+          setModalConfigVisible(false);
+        }}
+      />
 
-            <ModalGerenciarLimite
-                visible={modalLimiteVisible}
-                onClose={() => setModalLimiteVisible(false)}
-                anos={[2024, 2025, 2026]} // Exemplo de anos
-                onSalvarLimite={(dados) => {
-                    console.log('Salvar dados limite:', dados);
-                    // Aqui chama sua API: inserirLimite ou atualizarLimite
-                }}
-                loadContas={loadContas} // Passa a função loadContas para o ModalGerenciarLimite
-            />
+      <ModalGerenciarCartao
+        visible={modalGerenciarVisible}
+        onClose={() => setModalGerenciarVisible(false)}
+      />
 
-            <ModalContaAcoes
-                visible={modalAcoesVisible}
-                contaSelecionada={contaSelecionada}
-                onClose={() => setModalAcoesVisible(false)}
-                onEditar={editarConta}
-                onExcluir={excluirConta}
-            />
+      <ModalGerenciarLimite
+        visible={modalLimiteVisible}
+        onClose={() => setModalLimiteVisible(false)}
+        anos={[2024, 2025, 2026]}
+        onSalvarLimite={(dados) => {
+          console.log('Salvar dados limite:', dados);
+        }}
+        loadContas={loadContas}
+      />
 
-            <ModalShareOrganization
-                visible={shareModalVisible}
-                onClose={() => setShareModalVisible(false)}
-                existingKey={sharedOrgKey}
-                onSave={(key) => {
-                    setSharedOrgKey(key);
-                    loadContas(); // atualiza a tabela com base na nova chave
-                }}
-            />
+      <ModalContaAcoes
+        visible={modalAcoesVisible}
+        contaSelecionada={contaSelecionada}
+        onClose={() => setModalAcoesVisible(false)}
+        onEditar={editarConta}
+        onExcluir={excluirConta}
+      />
 
-
-        </View>
-    );
+      <ModalShareOrganization
+        visible={shareModalVisible}
+        onClose={() => setShareModalVisible(false)}
+        existingKey={sharedOrgKey}
+        onSave={(key) => {
+          setSharedOrgKey(key);
+          loadContas();
+        }}
+      />
+    </View>
+  );
 }
-
-function Resumo({ titulo, valor }) {
-    return (
-        <View style={styles.cardResumo}>
-            <Text style={styles.tituloResumo}>{titulo}</Text>
-            <Text style={styles.valorResumo}>R$ {parseFloat(valor).toFixed(2).replace('.', ',')}</Text>
-        </View>
-    );
-}
-
 
 const styles = StyleSheet.create({
-    container: { marginTop: 35, padding: 10, backgroundColor: 'white' },
-    titulo: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#fff', // harmoniza com o header azul
-        textAlign: 'center',
-        marginBottom: 1,
-        textTransform: 'uppercase', // deixa tudo em caixa alta
-        letterSpacing: 1, // mais espaço entre letras
-        backgroundColor: '#3b5998', // mesmo azul do header
-        paddingVertical: 10,
-        borderRadius: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        elevation: 4, // Android
-    },
-
-    botaoNovaConta: {
-        backgroundColor: '#28a745',
-        paddingVertical: 12,
-        borderRadius: 8,
-        marginVertical: 10,
-        alignItems: 'center',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 3,
-        marginTop: 5,
-        marginBottom: 10,
-
-    },
-    textoBotao: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-
-    filtros: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 10 },
-    pickerContainer: {
-        /*borderWidth: 1,
-        borderColor: '#999',*/
-        borderRadius: 5,
-        overflow: 'hidden',
-        width: '48%', // Deixa um pequeno espaço entre os Pickers
-    },
-    picker: {
-        width: '100%',
-        height: 50,
-        backgroundColor: '#fff',
-        borderRadius: 10,
-        marginVertical: 5,
-        alignItems: 'center',
-        elevation: 4, // sombra no Android
-        shadowColor: '#000', // sombra no iOS
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    item_mes: { color: '#000' },
-
-    cards: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-    cardResumo: {
-        width: '48%',
-        backgroundColor: '#f0f8ff',  //Cinza claro (#f7f7f7)
-        padding: 15,
-        borderRadius: 10,
-        marginVertical: 5,
-        alignItems: 'center',
-        elevation: 4, // sombra no Android
-        shadowColor: '#000', // sombra no iOS
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-    },
-    tituloResumo: {
-        fontSize: 14,
-        color: '#555',
-        marginBottom: 5,
-        textAlign: 'center',
-    },
-    valorResumo: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#333',
-        textAlign: 'center',
-    },
-
-    tabelaContainer: {
-        marginTop: 20,
-        borderWidth: 1,
-        borderColor: '#ccc',
-        borderRadius: 8,
-        overflow: 'hidden',
-    },
-
-    cabecalhoLinha: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#f0f8ff', // Mesma cor dos cards ou outra cor suave
-        padding: 10,
-        borderRadius: 8,
-        marginTop: 10,
-        marginBottom: 5,
-        elevation: 3, // Sombra Android
-        shadowColor: '#000', // Sombra iOS
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-    },
-    cabecalho: {
-        fontWeight: 'bold',
-        fontSize: 14,
-        color: '#333',
-        width: '23%',
-        textAlign: 'center',
-    },
-
-    itemCard: {
-        backgroundColor: '#fff',
-        padding: 10,
-        borderRadius: 8,
-        marginBottom: 10,
-        elevation: 3, // Android
-        shadowColor: '#000', // iOS
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
-    },
-    itemCardPago: {
-        backgroundColor: '#e6ffe6', // Verde clarinho
-    },
-    itemCardPendente: {
-        backgroundColor: '#fff3f3', // Vermelho clarinho
-    },
-    itemContent: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    coluna: {
-        width: '23%',
-        fontSize: 14,
-        color: '#333',
-    },
-
+  container: {
+    flex: 1,
+    marginTop: 35,
+    padding: 10,
+    backgroundColor: '#F4F8FF',
+  },
+  titulo: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    backgroundColor: '#1E4DB7',
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  botaoNovaConta: {
+    backgroundColor: '#1E8E5A',
+    paddingVertical: 13,
+    borderRadius: 12,
+    marginVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+  },
+  textoBotao: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  filtros: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+    marginBottom: 10,
+  },
+  pickerContainer: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    width: '48%',
+  },
+  picker: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+  },
+  cards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  cardResumo: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 14,
+    marginVertical: 5,
+    alignItems: 'flex-start',
+    elevation: 3,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  tituloResumo: {
+    fontSize: 13,
+    color: '#5D6F86',
+    marginBottom: 6,
+  },
+  valorResumo: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#16324F',
+  },
+  tabelaContainer: {
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#D9E4F2',
+    borderRadius: 14,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  tabelaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#EDF4FF',
+    padding: 12,
+  },
+  cabecalho: {
+    fontWeight: '800',
+    fontSize: 13,
+    color: '#33415C',
+    width: '22%',
+    textAlign: 'center',
+  },
+  nomeColuna: {
+    width: '34%',
+  },
+  itemCard: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EDF1F7',
+  },
+  itemCardPago: {
+    backgroundColor: '#F2FBF5',
+  },
+  itemCardPendente: {
+    backgroundColor: '#FFF8F2',
+  },
+  itemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  itemTitulo: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1B263B',
+  },
+  itemCategoria: {
+    fontSize: 12,
+    color: '#6B7A90',
+    marginTop: 2,
+  },
+  coluna: {
+    width: '22%',
+    fontSize: 13,
+    color: '#33415C',
+    textAlign: 'center',
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#1E8E5A',
+    borderColor: '#1E8E5A',
+  },
+  checkboxUnchecked: {
+    backgroundColor: '#fff',
+    borderColor: '#8CA0B3',
+  },
+  feedbackContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  feedbackText: {
+    color: '#607086',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+  },
+  listaContent: {
+    paddingBottom: 16,
+    flexGrow: 1,
+  },
 });

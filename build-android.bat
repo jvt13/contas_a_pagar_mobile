@@ -1,6 +1,9 @@
 @echo off
-REM — Define a URL de API
-set "EXPO_PUBLIC_API_URL=https://www.srv-jvt.com"
+setlocal EnableExtensions
+REM APK preview + bump versionCode — API producao
+set "EXPO_PUBLIC_API_URL=https://api-contas.srv-jvt.com"
+set "EAS_BUILD_NO_EXPO_GO_WARNING=true"
+set "CI=1"
 
 REM — Incrementa o versionCode no app.json
 echo 🚀 Bumping android versionCode...
@@ -14,7 +17,7 @@ if errorlevel 1 goto erro
 
 REM — Inicia o build remoto EAS
 echo 🚀 Iniciando EAS build…
-call npx eas build -p android --profile preview --clear-cache
+call npx eas-cli@latest build -p android --profile preview --clear-cache --non-interactive
 if errorlevel 1 goto erro
 
 echo ✅ Build iniciado! Confira o link no log acima.

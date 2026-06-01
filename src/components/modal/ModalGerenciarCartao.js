@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-import { loadCartoes, getCartaoById } from '../../hooks/useCartaoManager';
-import { getDados, postDados, deleteDados, putDados } from '../../utils/services';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useCartaoManager from '../../hooks/useCartaoManager';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { STORAGE_KEYS } from '../../utils/authSession';
+import { formatarNomeCartao } from '../../utils/cartao';
+import { ModalCloseButton } from '../AppIcon';
 
 export default function ModalGerenciarCartao({ visible, onClose }) {
   const {
@@ -22,8 +22,8 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
   useEffect(() => {
 
     const loadKeyShare = async () => {
-      const key_share = await AsyncStorage.getItem('@userKeyShareId');
-      const user = await AsyncStorage.getItem('@userId');
+      const key_share = await AsyncStorage.getItem(STORAGE_KEYS.userKeyShareId);
+      const user = await AsyncStorage.getItem(STORAGE_KEYS.userId);
       /*console.log('Chave de Organização:', key_share);
       console.log('ID do Usuário:', user);*/
 
@@ -51,9 +51,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
 
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
-          <TouchableOpacity onPress={onClose} style={styles.fechar}>
-            <Icon name="times" size={24} color="#000" />
-          </TouchableOpacity>
+          <ModalCloseButton onPress={onClose} style={styles.fechar} color="#333" />
           <Text style={styles.title}>Gerenciar Cartão</Text>
 
           <Text style={styles.label}>Nome do Cartão:</Text>
@@ -67,7 +65,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
           <Text style={styles.label}>Crédito/Débito:</Text>
           <View style={styles.pickerContainer}>
             <Picker
-              selectedValue={form.tipo_cartao_cartao}
+              selectedValue={form.tipo_cartao}
               onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
               style={styles.picker}
             >
@@ -80,7 +78,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
 
           <View style={styles.row}>
             <View style={styles.column}>
-              <Text style={styles.label}>Vencimento:</Text>
+              <Text style={styles.label}>Dia de vencimento:</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Digite o dia"
@@ -90,7 +88,7 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               />
             </View>
             <View style={styles.column}>
-              <Text style={styles.label}>Dia Útil:</Text>
+              <Text style={styles.label}>Dia de fechamento:</Text>
               <TextInput
                 style={styles.input}
                 placeholder="Digite o dia"
@@ -100,6 +98,15 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               />
             </View>
           </View>
+
+          <Text style={styles.label}>Limite de crédito (R$):</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex.: 5000"
+            keyboardType="numeric"
+            value={form.limite_credito}
+            onChangeText={text => setForm({ ...form, limite_credito: text })}
+          />
 
           <TouchableOpacity style={styles.btnAdd} onPress={handleAddOrEdit}>
             <Text style={styles.btnText}>{editId ? 'Atualizar Cartão' : 'Adicionar Cartão'}</Text>
@@ -114,13 +121,13 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               <View style={styles.headerRow}>
                 <Text style={styles.headerCol}>Nome</Text>
                 <Text style={styles.headerCol}>Venc.</Text>
-                <Text style={styles.headerCol}>Dia Útil</Text>
+                <Text style={styles.headerCol}>Fech.</Text>
                 <Text style={styles.headerCol}>Ações</Text>
               </View>
             )}
             renderItem={({ item }) => (
               <View style={styles.itemRow}>
-                <Text style={styles.itemCol}>{item.nome}</Text>
+                <Text style={styles.itemCol}>{formatarNomeCartao(item)}</Text>
                 <Text style={styles.itemCol}>{item.vencimento}</Text>
                 <Text style={styles.itemCol}>{item.dia_util}</Text>
                 <View style={styles.actionsCol}>

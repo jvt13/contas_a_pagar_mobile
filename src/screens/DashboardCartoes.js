@@ -1,0 +1,119 @@
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import MenuHeader from '../components/MenuHeader';
+import ModalConfig from '../components/modal/ModalConfig';
+import CartaoDashboardCard from '../components/dashboard/CartaoDashboardCard';
+import useDashboardCartoes from '../hooks/useDashboardCartoes';
+
+export default function DashboardCartoes() {
+  const [modalConfigVisible, setModalConfigVisible] = useState(false);
+  const { resumos, loading, erro, carregar } = useDashboardCartoes();
+
+  useFocusEffect(
+    useCallback(() => {
+      carregar();
+    }, [carregar])
+  );
+
+  return (
+    <View style={styles.container}>
+      <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={carregar} />}
+      >
+        <Text style={styles.titulo}>Dashboard dos Cartões</Text>
+        <Text style={styles.subtitulo}>
+          Limite, fatura atual e próximos vencimentos por cartão
+        </Text>
+
+        {loading && resumos.length === 0 ? (
+          <View style={styles.feedback}>
+            <ActivityIndicator size="large" color="#3b5998" />
+            <Text style={styles.feedbackTexto}>Carregando indicadores...</Text>
+          </View>
+        ) : null}
+
+        {!loading && erro ? (
+          <View style={styles.feedback}>
+            <Text style={styles.erroTexto}>{erro}</Text>
+            <TouchableOpacity style={styles.btnRetry} onPress={carregar}>
+              <Text style={styles.btnRetryTexto}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {!loading && !erro && resumos.length === 0 ? (
+          <View style={styles.feedback}>
+            <Text style={styles.feedbackTexto}>
+              Nenhum cartão cadastrado. Adicione cartões na Central de Controle.
+            </Text>
+          </View>
+        ) : null}
+
+        {resumos.map((resumo) => (
+          <CartaoDashboardCard key={String(resumo.id)} resumo={resumo} />
+        ))}
+      </ScrollView>
+
+      <ModalConfig visible={modalConfigVisible} onClose={() => setModalConfigVisible(false)} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#EEF4FF',
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  titulo: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#16324F',
+    marginBottom: 4,
+  },
+  subtitulo: {
+    fontSize: 14,
+    color: '#607086',
+    marginBottom: 16,
+  },
+  feedback: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  feedbackTexto: {
+    fontSize: 14,
+    color: '#607086',
+    textAlign: 'center',
+  },
+  erroTexto: {
+    fontSize: 14,
+    color: '#D64545',
+    textAlign: 'center',
+  },
+  btnRetry: {
+    backgroundColor: '#3b5998',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  btnRetryTexto: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+});

@@ -1,77 +1,191 @@
 import { useState } from 'react';
 import { Alert } from 'react-native';
-import { postDados } from '../utils/services';
-import { msgToast } from '../utils/util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { postDados } from '../utils/services';
+import { STORAGE_KEYS } from '../utils/authSession';
+import {
+  msgToast,
+  formatarErroApi,
+  normalizarVencimentoParaApi,
+  validarVencimentoConta,
+} from '../utils/util';
+import { extrairMesAnoCompetencia } from '../utils/competenciaCartao';
+import {
+  ESCOPOS_PARCELA,
+  OPCOES_PARCELAS,
+  contaPertenceGrupoParcela,
+  extrairNomeBaseParcela,
+  perguntarEscopoParcela,
+} from '../utils/parcelamento';
+
+export { OPCOES_PARCELAS };
+
 export default function useNovaConta(ano, mes, onSuccess, editarConta) {
-    const [form, setForm] = useState({
-        tipo_cartao: '',
-        nome: '',
-        categoria: '',
-        vencimento: '',
-        valor: '',
-        conta_user: '',
-        organization: ''
-    });
-    const [valorBackend, setValorBackend] = useState('');
+  const [form, setForm] = useState({
+    tipo_cartao: '',
+    nome: '',
+    categoria: '',
+    vencimento: '',
+    valor: '',
+    conta_user: '',
+    organization: '',
+    parcelado: false,
+    total_parcelas: 12,
+    recorrente: false,
+    total_recorrencias: 6,
+    grupo_parcelamento: null,
+    parcela_atual: null,
+    total_parcelas_grupo: null,
+    grupo_recorrencia: null,
+    recorrencia_atual: null,
+    total_recorrencias_grupo: null,
+  });
+  const [valorBackend, setValorBackend] = useState({ valor: '' });
 
-    async function salvarConta() {
-        const { tipo_cartao, nome, categoria, vencimento } = form;
-        if (!tipo_cartao || !nome || !categoria || !vencimento || !valorBackend) {
-            return Alert.alert('Erro', 'Preencha todos os campos.');
-        }
+  async function salvarConta() {
+    const {
+      tipo_cartao,
+      nome,
+      categoria,
+      vencimento,
+      parcelado,
+      total_parcelas,
+      recorrente,
+      total_recorrencias,
+    } = form;
 
-        const organization = await AsyncStorage.getItem('@userKeyShareId');
-        const userId = await AsyncStorage.getItem('@userId');
-
-        if (!organization) {
-            return Alert.alert('Erro', 'Organização não encontrada.');
-        }
-
-        const payload = {
-            ...form,
-            ano,
-            mes,
-            valor: valorBackend.valor,
-            conta_user: userId,
-            organization,
-        };
-
-        try {
-
-            console.log('Pode editar conta:', editarConta);
-            if (editarConta) {
-                const res = await postDados('/form_conta/editar', payload);
-                if (res.success) {
-                    //Alert.alert('Sucesso', 'Conta editada!');
-                    finalizaSets(); // Chama a função de finalização
-                    msgToast('Conta atualizada com sucesso!');
-                    return true;
-                } else {
-                    Alert.alert('Erro', res.message || 'Falha ao editar conta');
-                }
-            } else {
-                const res = await postDados('/form_conta', payload);
-                if (res.success) {
-                    //Alert.alert('Sucesso', 'Conta adicionada!');
-                    finalizaSets(); // Chama a função de finalização
-                    msgToast('Conta adicionada com sucesso!');
-                    return true;
-                } else {
-                    Alert.alert('Erro', res.message || 'Falha ao adicionar conta');
-                }
-            }
-        } catch {
-            Alert.alert('Erro', 'Falha de conexão');
-        }
-        return false;
+    if (!tipo_cartao || !nome || !categoria || !vencimento || !valorBackend?.valor) {
+      return Alert.alert('Erro', 'Preencha todos os campos.');
     }
 
-    const finalizaSets = () => {
-        setValorBackend('');
-        onSuccess(); // Chama a função de sucesso passada
+    const vencimentoNormalizado = normalizarVencimentoParaApi(vencimento, mes, ano);
+    if (!vencimentoNormalizado || !validarVencimentoConta(vencimentoNormalizado)) {
+      return Alert.alert(
+        'Erro',
+        'Informe uma data de vencimento válida (dd/mm/aaaa). Se escolheu um cartão, o dia será aplicado ao mês/ano selecionados na tela principal.'
+      );
+    }
+
+    const organization = await AsyncStorage.getItem(STORAGE_KEYS.userKeyShareId);
+    const userId = await AsyncStorage.getItem(STORAGE_KEYS.userId);
+
+    if (!organization) {
+      return Alert.alert('Erro', 'Organização não encontrada.');
+    }
+
+    const competencia = extrairMesAnoCompetencia(vencimentoNormalizado);
+    const mesCompetencia = competencia?.mesIndex0 ?? mes;
+    const anoCompetencia = competencia?.ano ?? ano;
+
+    let escopo = ESCOPOS_PARCELA.APENAS_ESTA;
+
+    if (editarConta && contaPertenceGrupoParcela(form)) {
+      const escopoEscolhido = await perguntarEscopoParcela(
+        'Aplicar alterações',
+        'Esta conta faz parte de um grupo. Deseja aplicar as alterações para:'
+      );
+      if (!escopoEscolhido) {
+        return false;
+      }
+      escopo = escopoEscolhido;
+    }
+
+    const totalParcelas = parseInt(total_parcelas, 10);
+    const totalRecorrencias = parseInt(total_recorrencias, 10);
+    const isParcelado = !editarConta && parcelado && totalParcelas > 1;
+    const isRecorrente = !editarConta && recorrente && totalRecorrencias > 1;
+
+    if (isParcelado && isRecorrente) {
+      return Alert.alert('Erro', 'Escolha apenas um modo: parcelado ou recorrente.');
+    }
+
+    const payload = {
+      ...form,
+      nome: extrairNomeBaseParcela(nome),
+      ano: anoCompetencia,
+      mes: mesCompetencia,
+      vencimento: vencimentoNormalizado,
+      valor: valorBackend.valor,
+      conta_user: userId,
+      organization,
+      parcelado: isParcelado,
+      total_parcelas: isParcelado ? totalParcelas : 1,
+      recorrente: isRecorrente,
+      total_recorrencias: isRecorrente ? totalRecorrencias : 1,
+      escopo,
     };
 
-    return { form, setForm, valorBackend, setValorBackend, salvarConta };
+    try {
+      if (__DEV__) {
+        console.log('[useNovaConta] payload:', payload);
+      }
+
+      if (editarConta) {
+        const res = await postDados('/form_conta/editar', payload);
+        if (res?.success) {
+          finalizaSets();
+          msgToast('Conta atualizada com sucesso!');
+          onSuccess?.();
+          return true;
+        }
+
+        Alert.alert('Erro', res?.message || 'Falha ao editar conta');
+      } else {
+        const res = await postDados('/form_conta', payload);
+        if (res?.success) {
+          finalizaSets();
+          const qtd = isParcelado ? totalParcelas : isRecorrente ? totalRecorrencias : 1;
+          msgToast(
+            isParcelado
+              ? `${qtd} parcelas adicionadas com sucesso!`
+              : isRecorrente
+                ? `${qtd} recorrências adicionadas com sucesso!`
+                : 'Conta adicionada com sucesso!'
+          );
+          onSuccess?.({
+            mes: String(mesCompetencia),
+            ano: String(anoCompetencia),
+            vencimento: vencimentoNormalizado,
+          });
+          return true;
+        }
+
+        Alert.alert('Erro', res?.message || 'Falha ao adicionar conta');
+      }
+    } catch (error) {
+      console.error('[useNovaConta] salvarConta:', error);
+      Alert.alert(
+        'Erro',
+        formatarErroApi(error, editarConta ? 'Erro ao editar conta' : 'Erro ao adicionar conta')
+      );
+    }
+
+    return false;
+  }
+
+  const finalizaSets = () => {
+    setValorBackend({ valor: '' });
+    setForm({
+      tipo_cartao: '',
+      nome: '',
+      categoria: '',
+      vencimento: '',
+      valor: '',
+      conta_user: '',
+      organization: '',
+      parcelado: false,
+      total_parcelas: 12,
+      recorrente: false,
+      total_recorrencias: 6,
+      grupo_parcelamento: null,
+      parcela_atual: null,
+      total_parcelas_grupo: null,
+      grupo_recorrencia: null,
+      recorrencia_atual: null,
+      total_recorrencias_grupo: null,
+    });
+  };
+
+  return { form, setForm, valorBackend, setValorBackend, salvarConta };
 }

@@ -3,7 +3,6 @@ import { Alert } from 'react-native';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
 import { msgToast } from '../utils/util';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 export default function useCartaoManager() {
   const [form, setForm] = useState({
@@ -11,6 +10,7 @@ export default function useCartaoManager() {
     tipo_cartao: '',
     vencimento: '',
     dia_util: '',
+    limite_credito: '',
     conta_user: '',
     organization: '' 
   });
@@ -70,6 +70,7 @@ export default function useCartaoManager() {
       tipo_cartao: cartao.tipo_cartao,
       vencimento: String(cartao.vencimento),
       dia_util: String(cartao.dia_util),
+      limite_credito: cartao.limite_credito != null ? String(cartao.limite_credito) : '',
       conta_user: cartao.conta_user,
       organization: cartao.organization
     });
@@ -109,6 +110,7 @@ export default function useCartaoManager() {
       tipo_cartao: 'selecione',
       vencimento: '',
       dia_util: '',
+      limite_credito: '',
       conta_user: '',
       organization: ''
     });

@@ -1,232 +1,278 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-    View,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    TouchableWithoutFeedback,
-    Keyboard, Image
+  View,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Keyboard,
+  ActivityIndicator,
 } from 'react-native';
-import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
+import AppIcon from '../components/AppIcon';
 import { postDados } from '../utils/services';
+import { saveSession } from '../utils/authSession';
 import * as util from '../utils/util';
 
-WebBrowser.maybeCompleteAuthSession();
-
 export default function Login({ navigation }) {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [hidePassword, setHidePassword] = useState(true);
-    const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
+  const emailNormalizado = useMemo(() => util.sanitizeEmail(email), [email]);
 
-    const [request, response, promptAsync] = Google.useAuthRequest({
-        expoClientId: '<YOUR_EXPO_CLIENT_ID>',
-        iosClientId: '<YOUR_IOS_CLIENT_ID>',
-        androidClientId: '<YOUR_ANDROID_CLIENT_ID>',
-        webClientId: '<YOUR_WEB_CLIENT_ID>',
-    });
+  const handleEmailLogin = async () => {
+    if (!emailNormalizado || !password.trim()) {
+      Alert.alert('Erro', 'Preencha e-mail e senha.');
+      return;
+    }
 
-    React.useEffect(() => {
-        if (response?.type === 'success') {
-            const { authentication } = response;
-            Alert.alert('Google Sign-In Success', `Token: ${authentication.accessToken}`);
-        }
-    }, [response]);
+    setLoading(true);
 
-    const handleEmailLogin = async () => {
-        if (!email || !password) {
-            return Alert.alert('Erro', 'Preencha e-mail e senha');
-        }
-        setLoading(true);
-        try {
-            const resp = await postDados('/auth/login', { email, password });
-            if (resp.success) {
-                //Alert.alert('chave: '+ resp.data.userId)
-                console.log('ChaveId: ' + resp.data.key_share_id);
-                console.log('Username: ', resp.data.username)
-                const userName = resp.data.username
-                if (userName !== null && userName !== undefined) {
-                    await AsyncStorage.setItem('@username', userName);
-                } else {
-                    await AsyncStorage.removeItem('@username');
-                }
+    try {
+      const resp = await postDados(
+        '/auth/login',
+        { email: emailNormalizado, password },
+        { auth: false }
+      );
 
-                await AsyncStorage.setItem('@userId', String(resp.data.userId));
-                await AsyncStorage.setItem('@userKeyShare', String(resp.data.key_share));
-                await AsyncStorage.setItem('@userKeyShareId', String(resp.data.key_share_id));
+      if (!resp?.success) {
+        Alert.alert('Login falhou', resp?.message || 'Verifique suas credenciais.');
+        return;
+      }
 
-                util.msgToast('Login realizado com sucesso!')
-                setTimeout(() => {
-                    navigation.replace('Home');
-                }, 800);
-            } else {
-                Alert.alert('Login falhou', resp.message || 'Verifique suas credenciais');
-            }
-        } catch (err) {
-            console.error(err);
-            Alert.alert('Login falhou', err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+      const { userId, key_share, key_share_id, username, token } = resp.data || {};
 
-    return (
-        <KeyboardAvoidingView
-            style={styles.container}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      await saveSession({
+        token: token || (userId ? `session-${userId}` : null),
+        userId,
+        username,
+        key_share,
+        key_share_id,
+      });
+
+      util.msgToast('Login realizado com sucesso!');
+      navigation.replace('Home');
+    } catch (error) {
+      console.error('Erro no login:', error);
+      Alert.alert('Login falhou', util.obterMensagemErro(error, 'Não foi possível entrar agora.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView
+          contentContainerStyle={styles.inner}
+          keyboardShouldPersistTaps="handled"
         >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-                <ScrollView
-                    contentContainerStyle={styles.inner}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <Text style={styles.title}>Bem-vindo ao Contas a Pagar</Text>
+          <View style={styles.heroCard}>
+            <Text style={styles.badge}>OrganizeContas</Text>
+            <Text style={styles.title}>Controle suas contas com mais clareza</Text>
+            <Text style={styles.subtitle}>
+              Acompanhe pagamentos, vencimentos e cartões em um único lugar.
+            </Text>
+          </View>
 
-                    <TouchableOpacity
-                        style={styles.googleButton}
-                        onPress={() => promptAsync()}
-                        disabled={!request}
-                    >
-                        <Text style={styles.googleButtonText}>Entrar com Google</Text>
-                    </TouchableOpacity>
+          <View style={styles.formCard}>
+            <Text style={styles.sectionTitle}>Entrar</Text>
 
-                    <Text style={styles.orText}>ou</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail"
+              placeholderTextColor="#7A869A"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={email}
+              onChangeText={setEmail}
+              editable={!loading}
+            />
 
-                    <TextInput
-                        style={styles.input}
-                        placeholder="E-mail"
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        value={email}
-                        onChangeText={setEmail}
-                    />
-                    <View style={styles.passwordRow}>
-                        <TextInput
-                            style={[styles.input, { flex: 1 }]}
-                            placeholder="Senha"
-                            secureTextEntry={!showPassword}
-                            value={password}
-                            onChangeText={setPassword}
-                        />
-                        <TouchableOpacity
-                            onPress={() => setShowPassword(prev => !prev)}
-                            style={styles.eyeButton}
-                        >
-                            <Image
-                                source={
-                                    showPassword
-                                        ? require('../../assets/img/ocultar.png')
-                                        : require('../../assets/img/mostrar.png')
-                                }
-                                style={styles.eyeIcon}
-                            />
-                        </TouchableOpacity>
-                    </View>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[styles.input, styles.passwordInput]}
+                placeholder="Senha"
+                placeholderTextColor="#7A869A"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                editable={!loading}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={styles.eyeButton}
+                disabled={loading}
+              >
+                <AppIcon
+                  name={showPassword ? 'eyeOff' : 'eye'}
+                  size={22}
+                  color="#7A869A"
+                />
+              </TouchableOpacity>
+            </View>
 
+            <TouchableOpacity
+              style={[styles.loginButton, loading && styles.buttonDisabled]}
+              onPress={handleEmailLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Entrar</Text>
+              )}
+            </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.loginButton} onPress={handleEmailLogin}>
-                        <Text style={styles.loginButtonText}>
-                            {loading ? 'Entrando...' : 'Entrar'}
-                        </Text>
-                    </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => navigation.navigate('Register')}
+              disabled={loading}
+            >
+              <Text style={styles.secondaryButtonText}>Criar nova conta</Text>
+            </TouchableOpacity>
 
-                    <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                        <Text style={styles.registerText}>Cadastrar nova conta</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-            </TouchableWithoutFeedback>
-        </KeyboardAvoidingView>
-    );
+            <Text style={styles.tipText}>
+              Dica: o app usa a URL da API configurada em `app.config.js` via `expo-constants`.
+            </Text>
+          </View>
+        </ScrollView>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    inner: {
-        flexGrow: 1,              // permite centralizar ou rolar
-        justifyContent: 'center', // centralizado quando não há teclado
-        padding: 20,
-        backgroundColor: '#f5f5f5',
-    },
-    title: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        marginBottom: 30,
-        textAlign: 'center',
-    },
-    googleButton: {
-        backgroundColor: '#4285F4',
-        padding: 12,
-        borderRadius: 4,
-        alignItems: 'center',
-    },
-    googleButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-    },
-    orText: {
-        textAlign: 'center',
-        marginVertical: 15,
-        color: '#555',
-    },
-    passwordRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 15,
-    },
-    eyeButton: {
-        marginLeft: 8,
-        padding: 8,
-    },
-    eyeIcon: {
-        width: 24,   // largura do ícone
-        height: 24,  // altura do ícone
-        resizeMode: 'contain', // mantém proporção
-    },
-    input: {
-        height: 48,
-        borderColor: '#ccc',
-        borderWidth: 1,
-        borderRadius: 4,
-        paddingHorizontal: 10,
-        backgroundColor: '#fff',
-        color: '#000',
-    },
-    showButton: {
-        marginLeft: 8,
-        paddingHorizontal: 10,
-        paddingVertical: 12,
-    },
-    showButtonText: {
-        color: '#0066cc',
-        fontWeight: 'bold',
-    },
-    loginButton: {
-        backgroundColor: '#0066cc',
-        padding: 12,
-        borderRadius: 4,
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    loginButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    registerText: {
-        color: '#0066cc',
-        textAlign: 'center',
-        marginTop: 10,
-    },
+  container: {
+    flex: 1,
+    backgroundColor: '#EAF2FF',
+  },
+  inner: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  heroCard: {
+    backgroundColor: '#1E4DB7',
+    borderRadius: 24,
+    padding: 24,
+    marginBottom: 18,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  badge: {
+    color: '#CFE0FF',
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 34,
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: '#DDE8FF',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  formCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 20,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#16324F',
+    marginBottom: 16,
+  },
+  input: {
+    height: 50,
+    borderColor: '#D7E0EF',
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    backgroundColor: '#F9FBFF',
+    color: '#0D1B2A',
+    marginBottom: 14,
+  },
+  passwordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  passwordInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  eyeButton: {
+    marginLeft: 8,
+    padding: 10,
+    borderRadius: 12,
+    backgroundColor: '#F3F7FF',
+  },
+  eyeIcon: {
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+  },
+  loginButton: {
+    backgroundColor: '#1E8E5A',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  buttonDisabled: {
+    opacity: 0.75,
+  },
+  secondaryButton: {
+    marginTop: 14,
+    borderWidth: 1,
+    borderColor: '#C9D8F3',
+    borderRadius: 14,
+    paddingVertical: 13,
+    alignItems: 'center',
+    backgroundColor: '#F8FBFF',
+  },
+  secondaryButtonText: {
+    color: '#1E4DB7',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  tipText: {
+    marginTop: 16,
+    color: '#5D6F86',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
 });

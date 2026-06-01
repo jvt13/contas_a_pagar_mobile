@@ -7,35 +7,44 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build:apk:prod": "eas build --platform android --profile production-apk --non-interactive",
+    "build:aab:prod": "eas build --platform android --profile production --non-interactive",
+    "build:apk:local": "eas build --platform android --profile preview-local --non-interactive",
+    "doctor": "expo-doctor",
     "bump-android-vercode": "node -e \"const fs=require('fs');const file='app.json';const cfg=JSON.parse(fs.readFileSync(file));cfg.expo.android.versionCode=(cfg.expo.android.versionCode||0)+1;fs.writeFileSync(file,JSON.stringify(cfg,null,2));console.log('android.versionCode ➜',cfg.expo.android.versionCode);\"",
     "bump-expo-version": "node -e \"const fs=require('fs');const file='app.json';const cfg=JSON.parse(fs.readFileSync(file));let parts=cfg.expo.version.split('.').map(n=>parseInt(n,10));parts[2]=(parts[2]||0)+1;cfg.expo.version=parts.join('.');fs.writeFileSync(file,JSON.stringify(cfg,null,2));console.log('expo.version ➜',cfg.expo.version);\""
   },
   "dependencies": {
-    "@react-native-async-storage/async-storage": "2.1.2",
-    "@react-native-community/checkbox": "^0.5.20",
-    "@react-native-community/datetimepicker": "^8.3.0",
-    "@react-native-picker/picker": "2.11.0",
-    "@react-navigation/drawer": "^7.4.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.4.4",
+    "@react-native-picker/picker": "2.11.1",
     "@react-navigation/native": "^7.1.9",
     "@react-navigation/native-stack": "^7.3.13",
-    "axios": "^1.9.0",
-    "crypto": "^1.0.1",
-    "expo": "~53.0.9",
-    "expo-auth-session": "~6.1.5",
-    "expo-status-bar": "~2.2.3",
-    "expo-web-browser": "~14.1.6",
-    "react": "19.0.0",
-    "react-native": "0.79.2",
+    "babel-preset-expo": "~54.0.10",
+    "expo": "~54.0.34",
+    "expo-build-properties": "~1.0.10",
+    "expo-status-bar": "~3.0.9",
+    "expo-web-browser": "~15.0.11",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
     "react-native-edge-to-edge": "^1.6.1",
-    "react-native-gesture-handler": "~2.24.0",
-    "react-native-picker-select": "^9.3.1",
-    "react-native-reanimated": "~3.17.4",
-    "react-native-safe-area-context": "^5.4.0",
-    "react-native-screens": "~4.10.0",
-    "react-native-version-check": "^3.5.0"
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
+    "react-native-version-check": "^3.5.0",
+    "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.20.0"
+    "@babel/core": "^7.20.0",
+    "dotenv": "^16.4.7"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["react-native-version-check"]
+      }
+    }
   },
   "private": true
 }

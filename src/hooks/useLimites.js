@@ -1,4 +1,4 @@
-import { getDados, postDados, putDados, deleteDados  } from '../utils/services'; // ajuste o caminho conforme necessário
+import { postDados, putDados } from '../utils/services';
 
 export async function obterIdLimite(ano, mes, organization) {
   try {

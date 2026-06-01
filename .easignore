@@ -1,0 +1,6 @@
+# Pasta nativa local (EAS gera via prebuild na nuvem)
+android/
+ios/
+
+# Backend embutido no repo — nao faz parte do app mobile
+api-contas-a-pagar/

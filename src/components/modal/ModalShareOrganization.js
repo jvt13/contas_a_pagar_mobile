@@ -8,8 +8,8 @@ import {
     StyleSheet,
     Alert
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { postDados } from '../../utils/services';
+import { saveSession } from '../../utils/authSession';
 import { msgToast } from '../../utils/util';
 
 export default function ModalShareOrganization({
@@ -21,29 +21,24 @@ export default function ModalShareOrganization({
     const [key, setKey] = useState('');
 
     useEffect(() => {
-
-        const loadKeyShare = async () => {
-            const key_share = await AsyncStorage.getItem('@userKeyShare');
-            if (key_share) {
-                setKey(key_share) || '';
-            }
-        }
-        
         if (visible) {
-            loadKeyShare();
+            setKey(existingKey || '');
         }
     }, [visible, existingKey]);
 
     const handleSave = async () => {
-        const userId = await AsyncStorage.getItem('@userId');
-
         if (!key.trim()) {
             return Alert.alert('Erro', 'Digite uma chave válida.');
         }
         try {
-            await postDados('/user/organization/share', { key, userId });
-            msgToast('Chave salva com sucesso!'); 
-            onSave(key);
+            const response = await postDados('/user/organization/share', { key: key.trim() });
+            const orgData = response?.data || {};
+            await saveSession({
+                key_share: orgData.key_share || key.trim(),
+                key_share_id: orgData.key_share_id,
+            });
+            msgToast('Chave salva com sucesso!');
+            onSave(orgData.key_share_id || key.trim());
             onClose();
         } catch (err) {
             console.error('Erro ao salvar chave:', err);

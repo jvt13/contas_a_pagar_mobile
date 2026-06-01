@@ -20,7 +20,7 @@ const CustomPicker = ({
     // Busca o label correspondente ao selectedValue
     const selectedLabel = () => {
         const selectedOption = options.find(
-            (item) => item.value === selectedValue
+            (item) => String(item.value) === String(selectedValue ?? '')
         );
         return selectedOption ? selectedOption.label : placeholder || "Selecione";
     };

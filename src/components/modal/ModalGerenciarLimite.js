@@ -11,7 +11,7 @@ import {
 import { Picker } from '@react-native-picker/picker';
 import { obterIdLimite, atualizarLimite, inserirLimite } from '../../hooks/useLimites';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Icon from 'react-native-vector-icons/FontAwesome';
+import { ModalCloseButton } from '../AppIcon';
 import * as util from '../../utils/util'
 
 
@@ -105,9 +105,7 @@ export default function ModalGerenciarLimite({ visible, onClose, anos, onSalvarL
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.overlay}>
                 <View style={styles.container}> 
-                    <TouchableOpacity onPress={onClose} style={styles.fechar}>
-                        <Icon name="times" size={24} color="#000" />
-                    </TouchableOpacity>
+                    <ModalCloseButton onPress={onClose} style={styles.fechar} color="#333" />
                     <Text style={styles.title}>Gerenciar Limite</Text>
 
                     <Text style={styles.label}>Mês:</Text>
