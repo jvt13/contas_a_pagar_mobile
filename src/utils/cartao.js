@@ -1,3 +1,5 @@
+import { obterNomeExibicaoCartao } from './bancos';
+
 const TIPOS_CARTAO = {
   credito: 'Crédito',
   debito: 'Débito',
@@ -33,14 +35,14 @@ export function formatarTipoCartao(tipo) {
 
 /**
  * Label amigável para listas e selects de cartão.
- * Ex.: "Pic Pay - Crédito"
+ * Ex.: "Nubank - Crédito" ou apelido customizado.
  */
 export function formatarNomeCartao(cartao) {
   if (!cartao || typeof cartao !== 'object') {
     return 'Sem cartão';
   }
 
-  const nome = String(cartao.nome ?? '').trim() || 'Sem nome';
+  const nome = obterNomeExibicaoCartao(cartao);
   const tipo = formatarTipoCartao(cartao.tipo_cartao);
 
   return tipo ? `${nome} - ${tipo}` : nome;

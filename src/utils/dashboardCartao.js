@@ -1,4 +1,5 @@
 import { formatarTipoCartao } from './cartao';
+import { enriquecerCartaoComBanco, resolverBancoParaCartao } from './bancos.js';
 import {
   calcularProximoFechamentoContaCartao,
   calcularVencimentoContaCartao,
@@ -13,6 +14,14 @@ function normalizarCartaoId(conta) {
 function parseValor(valor) {
   const n = parseFloat(valor);
   return Number.isNaN(n) ? 0 : n;
+}
+
+function normalizarApelido(texto) {
+  return String(texto || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
 }
 
 /** Faixas: 0–50 normal, 50–80 atenção, 80+ crítico */
@@ -73,10 +82,18 @@ export function montarResumoCartao(cartao, todasContas = [], dataReferencia = ne
   }
 
   const faturaAtual = contasFatura.reduce((sum, conta) => sum + parseValor(conta.valor), 0);
+  const bancoInfo = enriquecerCartaoComBanco(cartao);
+  const banco = resolverBancoParaCartao(cartao);
 
   return {
     id: cartao.id,
     nome: cartao.nome || 'Sem nome',
+    nomeExibicao: banco?.nome || cartao.nome || 'Sem nome',
+    apelido:
+      banco && cartao.nome && normalizarApelido(cartao.nome) !== normalizarApelido(banco.nome)
+        ? cartao.nome
+        : null,
+    ...bancoInfo,
     tipo,
     tipoLabel: formatarTipoCartao(tipo),
     limite,

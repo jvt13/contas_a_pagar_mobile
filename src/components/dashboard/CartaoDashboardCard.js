@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Modal, FlatList, Pressable } 
 import { formatCurrency } from '../../utils/util';
 import CartaoUtilizacaoBar from './CartaoUtilizacaoBar';
 import { ModalCloseButton } from '../AppIcon';
+import BancoBadge from '../bancos/BancoBadge';
 
 function LinhaResumo({ rotulo, valor, destaque = false }) {
   return (
@@ -25,8 +26,13 @@ export default function CartaoDashboardCard({ resumo }) {
   return (
     <View style={styles.card}>
       <View style={styles.header}>
+        <BancoBadge
+          cartao={{ banco_slug: resumo.bancoSlug, nome: resumo.nome }}
+          size="lg"
+        />
         <View style={styles.headerTexto}>
-          <Text style={styles.nome}>{resumo.nome}</Text>
+          <Text style={styles.nome}>{resumo.bancoNome || resumo.nomeExibicao || resumo.nome}</Text>
+          {resumo.apelido ? <Text style={styles.apelido}>{resumo.apelido}</Text> : null}
           <Text style={styles.tipo}>{resumo.tipoLabel || resumo.tipo}</Text>
         </View>
       </View>
@@ -138,7 +144,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 12,
     marginBottom: 12,
     paddingBottom: 10,
     borderBottomWidth: 1,
@@ -151,6 +158,12 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '800',
     color: '#16324F',
+  },
+  apelido: {
+    fontSize: 13,
+    color: '#607086',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
   tipo: {
     fontSize: 13,

@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Alert } from 'react-native';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
 import { msgToast } from '../utils/util';
+import { inferirBancoDoNome } from '../utils/bancos';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function useCartaoManager() {
   const [form, setForm] = useState({
     nome: '',
+    banco_slug: '',
     tipo_cartao: '',
     vencimento: '',
     dia_util: '',
@@ -40,8 +42,13 @@ export default function useCartaoManager() {
 
 
   const handleAddOrEdit = async () => {
-    if (!form.nome || !form.tipo_cartao || !form.vencimento || !form.dia_util) {
-      Alert.alert('Campos obrigatórios', 'Preencha todos os campos!');
+    if (!form.banco_slug) {
+      Alert.alert('Banco obrigatório', 'Selecione o banco emissor do cartão.');
+      return;
+    }
+
+    if (!form.tipo_cartao || form.tipo_cartao === 'selecione' || !form.vencimento || !form.dia_util) {
+      Alert.alert('Campos obrigatórios', 'Preencha banco, tipo, vencimento e fechamento.');
       return;
     }
 
@@ -65,8 +72,10 @@ export default function useCartaoManager() {
   };
 
   const handleEditar = (cartao) => {
+    const bancoInferido = inferirBancoDoNome(cartao.nome);
     setForm({
       nome: cartao.nome,
+      banco_slug: cartao.banco_slug || bancoInferido?.slug || '',
       tipo_cartao: cartao.tipo_cartao,
       vencimento: String(cartao.vencimento),
       dia_util: String(cartao.dia_util),
@@ -107,6 +116,7 @@ export default function useCartaoManager() {
   const resetForm = () => {
     setForm({
       nome: '',
+      banco_slug: '',
       tipo_cartao: 'selecione',
       vencimento: '',
       dia_util: '',

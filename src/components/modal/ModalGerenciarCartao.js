@@ -1,146 +1,164 @@
-import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert } from 'react-native';
+import React, { useEffect } from 'react';
+import {
+  Modal,
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useCartaoManager from '../../hooks/useCartaoManager';
 import { STORAGE_KEYS } from '../../utils/authSession';
 import { formatarNomeCartao } from '../../utils/cartao';
 import { ModalCloseButton } from '../AppIcon';
+import BancoSelectorGrid from '../bancos/BancoSelectorGrid';
+import BancoBadge from '../bancos/BancoBadge';
 
 export default function ModalGerenciarCartao({ visible, onClose }) {
   const {
-    form, setForm,
-    cartoes, setCartoes,
+    form,
+    setForm,
+    cartoes,
+    setCartoes,
     editId,
     resetForm,
     carregarCartoes,
     handleAddOrEdit,
     handleEditar,
-    handleExcluir
+    handleExcluir,
   } = useCartaoManager();
 
   useEffect(() => {
-
     const loadKeyShare = async () => {
       const key_share = await AsyncStorage.getItem(STORAGE_KEYS.userKeyShareId);
       const user = await AsyncStorage.getItem(STORAGE_KEYS.userId);
-      /*console.log('Chave de Organização:', key_share);
-      console.log('ID do Usuário:', user);*/
 
-      //setKey(key_share) || '';
-      setForm(prevForm => ({
+      setForm((prevForm) => ({
         ...prevForm,
         conta_user: user || '',
-        organization: key_share || ''
+        organization: key_share || '',
       }));
-      //console.log('Formulário inicial:', form);
-    }
+    };
 
     if (visible) {
-      loadKeyShare(); // Carrega a chave de organização ao abrir o modal
-      carregarCartoes();  // 🔁 Recarrega os cartões ao abrir o modal
+      loadKeyShare();
+      carregarCartoes();
     } else {
-      setCartoes([]); // Limpa a lista de cartões ao fechar o modal
-      resetForm(); // Reseta o formulário ao fechar o modal
+      setCartoes([]);
+      resetForm();
     }
-
   }, [visible]);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
-
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
           <ModalCloseButton onPress={onClose} style={styles.fechar} color="#333" />
           <Text style={styles.title}>Gerenciar Cartão</Text>
 
-          <Text style={styles.label}>Nome do Cartão:</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Digite o nome do cartão"
-            value={form.nome}
-            onChangeText={text => setForm({ ...form, nome: text })}
-          />
+          <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
+            <Text style={styles.label}>Banco emissor:</Text>
+            <BancoSelectorGrid
+              value={form.banco_slug}
+              onChange={(slug) => setForm({ ...form, banco_slug: slug })}
+            />
 
-          <Text style={styles.label}>Crédito/Débito:</Text>
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={form.tipo_cartao}
-              onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
-              style={styles.picker}
-            >
-              <Picker.Item label="Selecione" value="selecione" style={{ color: '#000' }} />
-              <Picker.Item label="Crédito" value="credito" style={{ color: '#000' }} />
-              <Picker.Item label="Débito" value="debito" style={{ color: '#000' }} />
-            </Picker>
-          </View>
+            <Text style={styles.label}>Apelido do cartão (opcional):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex.: Roxinho, Conta conjunta..."
+              value={form.nome}
+              onChangeText={(text) => setForm({ ...form, nome: text })}
+            />
 
-
-          <View style={styles.row}>
-            <View style={styles.column}>
-              <Text style={styles.label}>Dia de vencimento:</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite o dia"
-                keyboardType="numeric"
-                value={form.vencimento}
-                onChangeText={text => setForm({ ...form, vencimento: text })}
-              />
+            <Text style={styles.label}>Crédito/Débito:</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={form.tipo_cartao}
+                onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
+                style={styles.picker}
+              >
+                <Picker.Item label="Selecione" value="selecione" style={{ color: '#000' }} />
+                <Picker.Item label="Crédito" value="credito" style={{ color: '#000' }} />
+                <Picker.Item label="Débito" value="debito" style={{ color: '#000' }} />
+              </Picker>
             </View>
-            <View style={styles.column}>
-              <Text style={styles.label}>Dia de fechamento:</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="Digite o dia"
-                keyboardType="numeric"
-                value={form.dia_util}
-                onChangeText={text => setForm({ ...form, dia_util: text })}
-              />
-            </View>
-          </View>
 
-          <Text style={styles.label}>Limite de crédito (R$):</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Ex.: 5000"
-            keyboardType="numeric"
-            value={form.limite_credito}
-            onChangeText={text => setForm({ ...form, limite_credito: text })}
-          />
-
-          <TouchableOpacity style={styles.btnAdd} onPress={handleAddOrEdit}>
-            <Text style={styles.btnText}>{editId ? 'Atualizar Cartão' : 'Adicionar Cartão'}</Text>
-          </TouchableOpacity>
-
-          {/* Lista de Cartões */}
-          <FlatList
-            data={cartoes}
-            keyExtractor={item => item.id.toString()}
-            style={{ marginTop: 20 }}
-            ListHeaderComponent={() => (
-              <View style={styles.headerRow}>
-                <Text style={styles.headerCol}>Nome</Text>
-                <Text style={styles.headerCol}>Venc.</Text>
-                <Text style={styles.headerCol}>Fech.</Text>
-                <Text style={styles.headerCol}>Ações</Text>
+            <View style={styles.row}>
+              <View style={styles.column}>
+                <Text style={styles.label}>Dia de vencimento:</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite o dia"
+                  keyboardType="numeric"
+                  value={form.vencimento}
+                  onChangeText={(text) => setForm({ ...form, vencimento: text })}
+                />
               </View>
-            )}
-            renderItem={({ item }) => (
-              <View style={styles.itemRow}>
-                <Text style={styles.itemCol}>{formatarNomeCartao(item)}</Text>
-                <Text style={styles.itemCol}>{item.vencimento}</Text>
-                <Text style={styles.itemCol}>{item.dia_util}</Text>
-                <View style={styles.actionsCol}>
-                  <TouchableOpacity style={styles.btnEdit} onPress={() => handleEditar(item)}>
-                    <Text style={styles.btnActionText}>Editar</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.btnExcluir} onPress={() => handleExcluir(item.id)}>
-                    <Text style={styles.btnActionText}>Excluir</Text>
-                  </TouchableOpacity>
+              <View style={styles.column}>
+                <Text style={styles.label}>Dia de fechamento:</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Digite o dia"
+                  keyboardType="numeric"
+                  value={form.dia_util}
+                  onChangeText={(text) => setForm({ ...form, dia_util: text })}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.label}>Limite de crédito (R$):</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Ex.: 5000"
+              keyboardType="numeric"
+              value={form.limite_credito}
+              onChangeText={(text) => setForm({ ...form, limite_credito: text })}
+            />
+
+            <TouchableOpacity style={styles.btnAdd} onPress={handleAddOrEdit}>
+              <Text style={styles.btnText}>{editId ? 'Atualizar Cartão' : 'Adicionar Cartão'}</Text>
+            </TouchableOpacity>
+
+            <FlatList
+              data={cartoes}
+              keyExtractor={(item) => item.id.toString()}
+              style={{ marginTop: 20, maxHeight: 220 }}
+              scrollEnabled={false}
+              ListHeaderComponent={() => (
+                <View style={styles.headerRow}>
+                  <Text style={[styles.headerCol, styles.colBanco]}>Banco</Text>
+                  <Text style={styles.headerCol}>Cartão</Text>
+                  <Text style={styles.headerCol}>Venc.</Text>
+                  <Text style={styles.headerCol}>Ações</Text>
                 </View>
-              </View>
-            )}
-          />
+              )}
+              renderItem={({ item }) => (
+                <View style={styles.itemRow}>
+                  <View style={styles.colBanco}>
+                    <BancoBadge cartao={item} size="sm" />
+                  </View>
+                  <Text style={styles.itemCol} numberOfLines={2}>
+                    {formatarNomeCartao(item)}
+                  </Text>
+                  <Text style={styles.itemCol}>{item.vencimento}</Text>
+                  <View style={styles.actionsCol}>
+                    <TouchableOpacity style={styles.btnEdit} onPress={() => handleEditar(item)}>
+                      <Text style={styles.btnActionText}>Editar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.btnExcluir} onPress={() => handleExcluir(item.id)}>
+                      <Text style={styles.btnActionText}>Excluir</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            />
+          </ScrollView>
 
           <TouchableOpacity onPress={onClose} style={styles.btnClose}>
             <Text style={styles.btnText}>Fechar</Text>
@@ -156,18 +174,40 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     top: 10,
+    zIndex: 2,
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#fff', padding: 20, width: '90%', borderRadius: 8 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    width: '92%',
+    maxHeight: '92%',
+    borderRadius: 8,
+  },
+  scroll: {
+    marginTop: 8,
+  },
   title: { fontSize: 18, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' },
   label: { marginTop: 10, fontWeight: '600' },
-  input: { color: '#000', borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginTop: 4 },
+  input: {
+    color: '#000',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 6,
+    padding: 8,
+    marginTop: 4,
+  },
   pickerContainer: {
     borderWidth: 1,
     borderColor: '#999',
     borderRadius: 5,
     overflow: 'hidden',
-    width: '100%', // Deixa um pequeno espaço entre os Pickers
+    width: '100%',
   },
   picker: {
     width: '100%',
@@ -178,13 +218,21 @@ const styles = StyleSheet.create({
   column: { flex: 0.48 },
   btnAdd: { backgroundColor: '#28a745', padding: 12, borderRadius: 6, marginTop: 10 },
   btnText: { color: '#fff', textAlign: 'center', fontWeight: 'bold' },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  headerCol: { flex: 1, fontWeight: 'bold' },
-  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  itemCol: { flex: 1 },
-  actionsCol: { flexDirection: 'row', gap: 5 },
+  headerRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6, alignItems: 'center' },
+  headerCol: { flex: 1, fontWeight: 'bold', fontSize: 12 },
+  colBanco: { flex: 0.6, alignItems: 'center' },
+  itemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  itemCol: { flex: 1, fontSize: 12 },
+  actionsCol: { flexDirection: 'row', gap: 4 },
   btnEdit: { backgroundColor: '#ffc107', padding: 6, borderRadius: 4 },
   btnExcluir: { backgroundColor: '#dc3545', padding: 6, borderRadius: 4 },
-  btnActionText: { color: '#fff', fontSize: 12 },
-  btnClose: { backgroundColor: '#6c757d', padding: 10, borderRadius: 6, marginTop: 10 }
+  btnActionText: { color: '#fff', fontSize: 11 },
+  btnClose: { backgroundColor: '#6c757d', padding: 10, borderRadius: 6, marginTop: 10 },
 });

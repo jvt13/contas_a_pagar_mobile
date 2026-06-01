@@ -10,6 +10,7 @@ import {
   parseDataBRparaDate,
 } from '../../utils/competenciaCartao';
 import { formatarNomeCartao } from '../../utils/cartao';
+import BancoBadge from '../bancos/BancoBadge';
 import { OPCOES_PARCELAS, extrairNomeBaseParcela } from '../../utils/parcelamento';
 import { OPCOES_RECORRENCIA, isCategoriaFixa } from '../../utils/recorrencia';
 import useCartaoManager from '../../hooks/useCartaoManager';
@@ -229,9 +230,12 @@ export default function Modal_Nova_Conta({
             style={styles.selectWrapper}
           />
           {tipoCartaoId ? (
-            <Text style={styles.selectedCartao} numberOfLines={1}>
-              {formatarNomeCartao(cartaoSelecionado || {})}
-            </Text>
+            <View style={styles.selectedCartaoRow}>
+              <BancoBadge cartao={cartaoSelecionado || {}} size="sm" />
+              <Text style={styles.selectedCartao} numberOfLines={1}>
+                {formatarNomeCartao(cartaoSelecionado || {})}
+              </Text>
+            </View>
           ) : null}
 
           <Text style={styles.label}>Tipo de gasto:</Text>
@@ -520,10 +524,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     overflow: 'hidden',
   },
+  selectedCartaoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
   selectedCartao: {
+    flex: 1,
     fontSize: 13,
     color: '#1E4DB7',
-    marginBottom: 12,
     fontWeight: '500',
   },
   row: {
