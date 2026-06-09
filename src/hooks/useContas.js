@@ -20,7 +20,7 @@ export default function useContas(ano, mes, sharedOrgKey) {
 
     try {
       const organization = (await AsyncStorage.getItem('@userKeyShareId')) || sharedOrgKey;
-      const data = await postDados('/dados_tab', { ano, mes, organization });
+      const data = await postDados('/contas_lancadas', { ano, mes, organization });
 
       if (!data?.success) {
         Alert.alert('Erro', data?.message || 'Erro ao carregar dados.');

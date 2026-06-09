@@ -11,6 +11,7 @@ import {
   validarVencimentoConta,
 } from '../utils/util';
 import { extrairMesAnoCompetencia } from '../utils/competenciaCartao';
+import { isCartaoDebito, formatarDataBRHoje } from '../utils/tipoCartao';
 import {
   ESCOPOS_PARCELA,
   OPCOES_PARCELAS,
@@ -21,7 +22,7 @@ import {
 
 export { OPCOES_PARCELAS };
 
-export default function useNovaConta(ano, mes, onSuccess, editarConta) {
+export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSelecionado = null) {
   const [form, setForm] = useState({
     tipo_cartao: '',
     nome: '',
@@ -59,7 +60,21 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta) {
       return Alert.alert('Erro', 'Preencha todos os campos.');
     }
 
-    const vencimentoNormalizado = normalizarVencimentoParaApi(vencimento, mes, ano);
+    const ehDebito = isCartaoDebito(cartaoSelecionado);
+
+    if (ehDebito && !editarConta && (parcelado || recorrente)) {
+      return Alert.alert(
+        'Erro',
+        'Parcelamento e recorrência estão disponíveis apenas para cartão de crédito.'
+      );
+    }
+
+    let vencimentoFinal = vencimento;
+    if (ehDebito && !editarConta) {
+      vencimentoFinal = formatarDataBRHoje();
+    }
+
+    const vencimentoNormalizado = normalizarVencimentoParaApi(vencimentoFinal, mes, ano);
     if (!vencimentoNormalizado || !validarVencimentoConta(vencimentoNormalizado)) {
       return Alert.alert(
         'Erro',
@@ -100,19 +115,25 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta) {
       return Alert.alert('Erro', 'Escolha apenas um modo: parcelado ou recorrente.');
     }
 
+    const hoje = new Date();
+    const mesLancamento = hoje.getMonth();
+    const anoLancamento = hoje.getFullYear();
+
     const payload = {
       ...form,
       nome: extrairNomeBaseParcela(nome),
       ano: anoCompetencia,
       mes: mesCompetencia,
       vencimento: vencimentoNormalizado,
+      data_lancamento: formatarDataBRHoje(),
       valor: valorBackend.valor,
       conta_user: userId,
       organization,
-      parcelado: isParcelado,
-      total_parcelas: isParcelado ? totalParcelas : 1,
-      recorrente: isRecorrente,
-      total_recorrencias: isRecorrente ? totalRecorrencias : 1,
+      parcelado: ehDebito ? false : isParcelado,
+      total_parcelas: ehDebito ? 1 : isParcelado ? totalParcelas : 1,
+      recorrente: ehDebito ? false : isRecorrente,
+      total_recorrencias: ehDebito ? 1 : isRecorrente ? totalRecorrencias : 1,
+      paga: ehDebito && !editarConta ? true : undefined,
       escopo,
     };
 
@@ -144,8 +165,8 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta) {
                 : 'Conta adicionada com sucesso!'
           );
           onSuccess?.({
-            mes: String(mesCompetencia),
-            ano: String(anoCompetencia),
+            mes: String(mesLancamento),
+            ano: String(anoLancamento),
             vencimento: vencimentoNormalizado,
           });
           return true;

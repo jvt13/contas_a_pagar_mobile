@@ -3,6 +3,7 @@ import { Alert } from 'react-native';
 import { getDados, postDados, putDados, deleteDados } from '../utils/services';
 import { msgToast } from '../utils/util';
 import { inferirBancoDoNome } from '../utils/bancos';
+import { isCartaoDebito } from '../utils/tipoCartao';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function useCartaoManager() {
@@ -47,19 +48,28 @@ export default function useCartaoManager() {
       return;
     }
 
-    if (!form.tipo_cartao || form.tipo_cartao === 'selecione' || !form.vencimento || !form.dia_util) {
-      Alert.alert('Campos obrigatórios', 'Preencha banco, tipo, vencimento e fechamento.');
+    if (!form.tipo_cartao || form.tipo_cartao === 'selecione') {
+      Alert.alert('Campos obrigatórios', 'Selecione o tipo do cartão (Crédito ou Débito).');
       return;
     }
 
+    const ehDebitoForm = form.tipo_cartao === 'debito';
+
+    if (!ehDebitoForm && (!form.vencimento || !form.dia_util)) {
+      Alert.alert('Campos obrigatórios', 'Preencha vencimento e fechamento para cartão de crédito.');
+      return;
+    }
+
+    const payload = ehDebitoForm
+      ? { ...form, vencimento: '1', dia_util: '1', limite_credito: '' }
+      : form;
+
     try {
       if (editId) {
-        await putDados(`/update_cartao/${editId}`, form);
-        //Alert.alert('Sucesso', 'Cartão atualizado com sucesso!');
+        await putDados(`/update_cartao/${editId}`, payload);
         msgToast('Cartão atualizado com sucesso!');
       } else {
-        await postDados('/add_cartao', form);
-        //Alert.alert('Sucesso', 'Cartão adicionado com sucesso!');
+        await postDados('/add_cartao', payload);
         msgToast('Cartão adicionado com sucesso!');
       }
 
@@ -73,13 +83,14 @@ export default function useCartaoManager() {
 
   const handleEditar = (cartao) => {
     const bancoInferido = inferirBancoDoNome(cartao.nome);
+    const ehDebito = isCartaoDebito(cartao);
     setForm({
       nome: cartao.nome,
       banco_slug: cartao.banco_slug || bancoInferido?.slug || '',
       tipo_cartao: cartao.tipo_cartao,
-      vencimento: String(cartao.vencimento),
-      dia_util: String(cartao.dia_util),
-      limite_credito: cartao.limite_credito != null ? String(cartao.limite_credito) : '',
+      vencimento: ehDebito ? '1' : String(cartao.vencimento),
+      dia_util: ehDebito ? '1' : String(cartao.dia_util),
+      limite_credito: ehDebito ? '' : cartao.limite_credito != null ? String(cartao.limite_credito) : '',
       conta_user: cartao.conta_user,
       organization: cartao.organization
     });

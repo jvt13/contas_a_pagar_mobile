@@ -10,6 +10,7 @@ import {
   parseDataBRparaDate,
 } from '../../utils/competenciaCartao';
 import { formatarNomeCartao } from '../../utils/cartao';
+import { isCartaoDebito, formatarDataBRHoje } from '../../utils/tipoCartao';
 import BancoBadge from '../bancos/BancoBadge';
 import { OPCOES_PARCELAS, extrairNomeBaseParcela } from '../../utils/parcelamento';
 import { OPCOES_RECORRENCIA, isCategoriaFixa } from '../../utils/recorrencia';
@@ -34,8 +35,11 @@ export default function Modal_Nova_Conta({
     ano,
     mes,
     onSuccess,
-    editarConta
+    editarConta,
+    cartaoSelecionado
   );
+
+  const ehDebito = isCartaoDebito(cartaoSelecionado);
 
   const tipoCartaoId = String(form.tipo_cartao || '');
   const cartaoSelecionado = cartoes.find((c) => String(c.id) === tipoCartaoId);
@@ -51,6 +55,9 @@ export default function Modal_Nova_Conta({
   const sugerirVencimento = (cartao) => {
     if (!cartao) {
       return null;
+    }
+    if (isCartaoDebito(cartao)) {
+      return formatarDataBRHoje();
     }
     return obterVencimentoSugeridoPorCartao(cartao, {
       mesIndex0: mes,
@@ -238,6 +245,14 @@ export default function Modal_Nova_Conta({
             </View>
           ) : null}
 
+          {ehDebito && !editarConta ? (
+            <View style={styles.avisoDebito}>
+              <Text style={styles.avisoDebitoTexto}>
+                Cartão débito: o lançamento será registrado como pago na data de hoje.
+              </Text>
+            </View>
+          ) : null}
+
           <Text style={styles.label}>Tipo de gasto:</Text>
           <TextInput
             style={styles.input}
@@ -260,7 +275,9 @@ export default function Modal_Nova_Conta({
 
           <View style={styles.row}>
             <View style={styles.column}>
-              <Text style={styles.label}>Vencimento (data):</Text>
+              <Text style={styles.label}>
+                {ehDebito ? 'Data da compra:' : 'Vencimento (data):'}
+              </Text>
               <View style={styles.inputWithIcon}>
                 <TextInput
                   style={styles.inputDate}
@@ -289,7 +306,9 @@ export default function Modal_Nova_Conta({
                 />
               )}
               <Text style={styles.hintVencimento}>
-                Preenchido ao escolher o cartão; você pode alterar se o banco mudou o fechamento.
+                {ehDebito
+                  ? 'Débito: data preenchida automaticamente (hoje).'
+                  : 'Preenchido ao escolher o cartão; você pode alterar se o banco mudou o fechamento.'}
               </Text>
             </View>
             <View style={styles.column}>
@@ -308,7 +327,7 @@ export default function Modal_Nova_Conta({
             </View>
           </View>
 
-          {!editarConta ? (
+          {!editarConta && !ehDebito ? (
             <>
               <TouchableOpacity
                 style={styles.parceladoRow}
@@ -535,6 +554,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1E4DB7',
     fontWeight: '500',
+  },
+  avisoDebito: {
+    backgroundColor: '#EAF9EF',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#C8E6D0',
+  },
+  avisoDebitoTexto: {
+    fontSize: 13,
+    color: '#1E8E5A',
+    fontWeight: '600',
   },
   row: {
     flexDirection: 'row',

@@ -40,7 +40,7 @@ export default function useDashboardCartoes() {
 
       const cartoes = cartoesRes?.success ? cartoesRes.data : [];
       const contas = pendentesRes?.contasPendentes || pendentesRes?.data || [];
-      setResumos(montarDashboardCartoes(cartoes, contas));
+      setResumos(montarDashboardCartoes(cartoes, contas, contas, new Date()));
     } catch (error) {
       console.error('Erro ao carregar dashboard de cartões:', error);
       setErro('Não foi possível carregar o dashboard.');

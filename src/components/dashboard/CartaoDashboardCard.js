@@ -22,6 +22,7 @@ export default function CartaoDashboardCard({ resumo }) {
   }
 
   const temDetalhes = Array.isArray(resumo.contasFatura) && resumo.contasFatura.length > 0;
+  const ehDebito = resumo.ehDebito === true;
 
   return (
     <View style={styles.card}>
@@ -37,45 +38,60 @@ export default function CartaoDashboardCard({ resumo }) {
         </View>
       </View>
 
-      <LinhaResumo
-        rotulo="Limite"
-        valor={resumo.limite > 0 ? formatCurrency(resumo.limite) : '—'}
-      />
-      <LinhaResumo rotulo="Utilizado" valor={formatCurrency(resumo.utilizado)} />
-      <LinhaResumo
-        rotulo="Disponível"
-        valor={resumo.disponivel != null ? formatCurrency(resumo.disponivel) : '—'}
-      />
-
-      <CartaoUtilizacaoBar
-        percentual={resumo.percentualUtilizado}
-        faixa={resumo.faixaUtilizacao}
-      />
-
-      <View style={styles.faturaBox}>
-        <Text style={styles.faturaTitulo}>Fatura Atual</Text>
-        <Text style={styles.faturaValor}>{formatCurrency(resumo.faturaAtual)}</Text>
-      </View>
-
-      <View style={styles.datas}>
-        {resumo.proximoVencimento ? (
-          <View style={styles.dataItem}>
-            <Text style={styles.dataRotulo}>Próximo vencimento</Text>
-            <Text style={styles.dataValor}>{resumo.proximoVencimento}</Text>
+      {ehDebito ? (
+        <>
+          <View style={styles.faturaBox}>
+            <Text style={styles.faturaTitulo}>Gastos no mês</Text>
+            <Text style={styles.faturaValor}>{formatCurrency(resumo.gastosNoMes || 0)}</Text>
           </View>
-        ) : null}
-        {resumo.proximoFechamento ? (
-          <View style={styles.dataItem}>
-            <Text style={styles.dataRotulo}>Próximo fechamento</Text>
-            <Text style={styles.dataValor}>{resumo.proximoFechamento}</Text>
-          </View>
-        ) : null}
-      </View>
+          <Text style={styles.lancamentos}>
+            {resumo.qtdLancamentos}{' '}
+            {resumo.qtdLancamentos === 1 ? 'lançamento pago' : 'lançamentos pagos'}
+          </Text>
+        </>
+      ) : (
+        <>
+          <LinhaResumo
+            rotulo="Limite"
+            valor={resumo.limite > 0 ? formatCurrency(resumo.limite) : '—'}
+          />
+          <LinhaResumo rotulo="Utilizado" valor={formatCurrency(resumo.utilizado)} />
+          <LinhaResumo
+            rotulo="Disponível"
+            valor={resumo.disponivel != null ? formatCurrency(resumo.disponivel) : '—'}
+          />
 
-      <Text style={styles.lancamentos}>
-        {resumo.qtdLancamentos}{' '}
-        {resumo.qtdLancamentos === 1 ? 'lançamento' : 'lançamentos'}
-      </Text>
+          <CartaoUtilizacaoBar
+            percentual={resumo.percentualUtilizado}
+            faixa={resumo.faixaUtilizacao}
+          />
+
+          <View style={styles.faturaBox}>
+            <Text style={styles.faturaTitulo}>Fatura Atual</Text>
+            <Text style={styles.faturaValor}>{formatCurrency(resumo.faturaAtual)}</Text>
+          </View>
+
+          <View style={styles.datas}>
+            {resumo.proximoVencimento ? (
+              <View style={styles.dataItem}>
+                <Text style={styles.dataRotulo}>Próximo vencimento</Text>
+                <Text style={styles.dataValor}>{resumo.proximoVencimento}</Text>
+              </View>
+            ) : null}
+            {resumo.proximoFechamento ? (
+              <View style={styles.dataItem}>
+                <Text style={styles.dataRotulo}>Próximo fechamento</Text>
+                <Text style={styles.dataValor}>{resumo.proximoFechamento}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text style={styles.lancamentos}>
+            {resumo.qtdLancamentos}{' '}
+            {resumo.qtdLancamentos === 1 ? 'lançamento' : 'lançamentos'}
+          </Text>
+        </>
+      )}
 
       {temDetalhes ? (
         <TouchableOpacity style={styles.btnDetalhes} onPress={() => setDetalhesVisible(true)}>
@@ -91,10 +107,14 @@ export default function CartaoDashboardCard({ resumo }) {
               style={styles.fechar}
               color="#333"
             />
-            <Text style={styles.modalTitulo}>Fatura — {resumo.nome}</Text>
+            <Text style={styles.modalTitulo}>
+              {ehDebito ? 'Lançamentos — ' : 'Fatura — '}
+              {resumo.nome}
+            </Text>
             <Text style={styles.modalSubtitulo}>
-              Vencimento {resumo.proximoVencimento} · Total{' '}
-              {formatCurrency(resumo.faturaAtual)}
+              {ehDebito
+                ? `Total ${formatCurrency(resumo.gastosNoMes || 0)}`
+                : `Vencimento ${resumo.proximoVencimento} · Total ${formatCurrency(resumo.faturaAtual)}`}
             </Text>
             <FlatList
               data={resumo.contasFatura}

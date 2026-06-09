@@ -10,11 +10,11 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import useCartaoManager from '../../hooks/useCartaoManager';
 import { STORAGE_KEYS } from '../../utils/authSession';
 import { formatarNomeCartao } from '../../utils/cartao';
+import { isCartaoDebito } from '../../utils/tipoCartao';
 import { ModalCloseButton } from '../AppIcon';
 import BancoSelectorGrid from '../bancos/BancoSelectorGrid';
 import BancoBadge from '../bancos/BancoBadge';
@@ -54,6 +54,9 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
     }
   }, [visible]);
 
+  const ehCredito = form.tipo_cartao === 'credito';
+  const ehDebito = form.tipo_cartao === 'debito';
+
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
@@ -76,50 +79,86 @@ export default function ModalGerenciarCartao({ visible, onClose }) {
               onChangeText={(text) => setForm({ ...form, nome: text })}
             />
 
-            <Text style={styles.label}>Crédito/Débito:</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={form.tipo_cartao}
-                onValueChange={(value) => setForm({ ...form, tipo_cartao: value })}
-                style={styles.picker}
+            <Text style={styles.label}>Tipo do cartão:</Text>
+            <View style={styles.tipoRow}>
+              <TouchableOpacity
+                style={[styles.tipoChip, form.tipo_cartao === 'credito' && styles.tipoChipAtivo]}
+                onPress={() => setForm({ ...form, tipo_cartao: 'credito' })}
               >
-                <Picker.Item label="Selecione" value="selecione" style={{ color: '#000' }} />
-                <Picker.Item label="Crédito" value="credito" style={{ color: '#000' }} />
-                <Picker.Item label="Débito" value="debito" style={{ color: '#000' }} />
-              </Picker>
+                <Text
+                  style={[
+                    styles.tipoChipText,
+                    form.tipo_cartao === 'credito' && styles.tipoChipTextAtivo,
+                  ]}
+                >
+                  Crédito
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tipoChip, form.tipo_cartao === 'debito' && styles.tipoChipAtivo]}
+                onPress={() =>
+                  setForm({
+                    ...form,
+                    tipo_cartao: 'debito',
+                    limite_credito: '',
+                    vencimento: '1',
+                    dia_util: '1',
+                  })
+                }
+              >
+                <Text
+                  style={[
+                    styles.tipoChipText,
+                    form.tipo_cartao === 'debito' && styles.tipoChipTextAtivo,
+                  ]}
+                >
+                  Débito
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.row}>
-              <View style={styles.column}>
-                <Text style={styles.label}>Dia de vencimento:</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Digite o dia"
-                  keyboardType="numeric"
-                  value={form.vencimento}
-                  onChangeText={(text) => setForm({ ...form, vencimento: text })}
-                />
-              </View>
-              <View style={styles.column}>
-                <Text style={styles.label}>Dia de fechamento:</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Digite o dia"
-                  keyboardType="numeric"
-                  value={form.dia_util}
-                  onChangeText={(text) => setForm({ ...form, dia_util: text })}
-                />
-              </View>
-            </View>
+            {ehCredito ? (
+              <>
+                <View style={styles.row}>
+                  <View style={styles.column}>
+                    <Text style={styles.label}>Dia de vencimento:</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex.: 15"
+                      keyboardType="numeric"
+                      value={form.vencimento}
+                      onChangeText={(text) => setForm({ ...form, vencimento: text })}
+                    />
+                  </View>
+                  <View style={styles.column}>
+                    <Text style={styles.label}>Dia de fechamento:</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Ex.: 7"
+                      keyboardType="numeric"
+                      value={form.dia_util}
+                      onChangeText={(text) => setForm({ ...form, dia_util: text })}
+                    />
+                  </View>
+                </View>
 
-            <Text style={styles.label}>Limite de crédito (R$):</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Ex.: 5000"
-              keyboardType="numeric"
-              value={form.limite_credito}
-              onChangeText={(text) => setForm({ ...form, limite_credito: text })}
-            />
+                <Text style={styles.label}>Limite de crédito (R$):</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Ex.: 5000"
+                  keyboardType="numeric"
+                  value={form.limite_credito}
+                  onChangeText={(text) => setForm({ ...form, limite_credito: text })}
+                />
+              </>
+            ) : null}
+
+            {ehDebito ? (
+              <Text style={styles.hintDebito}>
+                Cartão débito: limite, fechamento e vencimento de fatura não se aplicam. Despesas
+                são lançadas como pagas na data da compra.
+              </Text>
+            ) : null}
 
             <TouchableOpacity style={styles.btnAdd} onPress={handleAddOrEdit}>
               <Text style={styles.btnText}>{editId ? 'Atualizar Cartão' : 'Adicionar Cartão'}</Text>
@@ -213,6 +252,41 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 50,
     backgroundColor: '#fff',
+  },
+  tipoRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6,
+  },
+  tipoChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#D9E4F2',
+    alignItems: 'center',
+    backgroundColor: '#F7F9FC',
+  },
+  tipoChipAtivo: {
+    borderColor: '#3b5998',
+    backgroundColor: '#E9F0FF',
+  },
+  tipoChipText: {
+    fontWeight: '600',
+    color: '#5D6F86',
+  },
+  tipoChipTextAtivo: {
+    color: '#1E4DB7',
+    fontWeight: '800',
+  },
+  hintDebito: {
+    marginTop: 10,
+    fontSize: 12,
+    color: '#607086',
+    lineHeight: 18,
+    backgroundColor: '#F1F8EC',
+    padding: 10,
+    borderRadius: 8,
   },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   column: { flex: 0.48 },
