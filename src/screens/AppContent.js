@@ -276,13 +276,20 @@ export default function AppContent() {
         visible={modalNovaContaVisible}
         onClose={() => setModalNovaContaVisible(false)}
         onSuccess={(filtro) => {
-          if (filtro?.mes != null && filtro?.mes !== '') {
-            setMes(String(filtro.mes));
-          }
-          if (filtro?.ano) {
-            setAno(String(filtro.ano));
-          }
-          if (!filtro?.mes && !filtro?.ano) {
+          // filtro.mes/ano = competência de data_lancamento da nova conta (criação).
+          // Edição não envia filtro: recarrega sempre, pois a conta pode estar na lista atual.
+          const mesLancamento =
+            filtro?.mes != null && filtro?.mes !== '' ? String(filtro.mes) : null;
+          const anoLancamento = filtro?.ano ? String(filtro.ano) : null;
+
+          const pertenceAoFiltro =
+            mesLancamento === null || anoLancamento === null
+              ? true
+              : mesLancamento === String(mes) && anoLancamento === String(ano);
+
+          // Mantém o filtro escolhido pelo usuário; só recarrega quando a conta
+          // pertence ao mês/ano exibido (Home usa eixo data_lancamento).
+          if (pertenceAoFiltro) {
             loadContas();
           }
           setModalNovaContaVisible(false);
