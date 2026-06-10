@@ -30,7 +30,7 @@ export default function ContasPagas() {
     alturaDisponivel,
     getLabelCartao,
   } = useRelatorioContas('/contas_pagas', 'contasPagas');
-  const { categorias } = useCategorias();
+  const { categorias, getSubcategorias } = useCategorias();
 
   const totalPago = contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
 
@@ -98,7 +98,9 @@ export default function ContasPagas() {
                         </Text>
                         <CategoriaLabel
                           categoriaId={item.categoria}
+                          subcategoriaId={item.subcategoria}
                           categorias={categorias}
+                          subcategorias={getSubcategorias(item.categoria)}
                           textStyle={styles.cellSubtext}
                         />
                       </View>
@@ -107,7 +109,9 @@ export default function ContasPagas() {
                       </Text>
                       <CategoriaLabel
                         categoriaId={item.categoria}
+                        subcategoriaId={item.subcategoria}
                         categorias={categorias}
+                        subcategorias={getSubcategorias(item.categoria)}
                         textStyle={styles.cell}
                         style={{ width: 110 }}
                       />

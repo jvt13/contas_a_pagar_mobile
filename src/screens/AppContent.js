@@ -70,7 +70,7 @@ export default function AppContent() {
     mes,
     sharedOrgKey
   );
-  const { categorias } = useCategorias();
+  const { categorias, getSubcategorias } = useCategorias();
 
   useEffect(() => {
     if (posicaoTabelaY > 0) {
@@ -243,7 +243,9 @@ export default function AppContent() {
                     </Text>
                     <CategoriaLabel
                       categoriaId={item.categoria}
+                      subcategoriaId={item.subcategoria}
                       categorias={categorias}
+                      subcategorias={getSubcategorias(item.categoria)}
                       textStyle={styles.itemCategoria}
                     />
                   </View>

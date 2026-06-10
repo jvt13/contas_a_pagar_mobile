@@ -1,21 +1,39 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import AppIcon from '../AppIcon';
-import { formatarLabelCategoria, resolverCategoria } from '../../utils/categorias';
+import {
+  formatarLabelCategoria,
+  formatarLabelCategoriaCompleta,
+  resolverCategoria,
+  resolverSubcategoria,
+} from '../../utils/categorias';
 
 /**
- * Exibe ícone + nome da categoria a partir do id gravado na conta.
+ * Exibe ícone + nome da categoria (e subcategoria, se houver) a partir dos ids gravados na conta.
  * Passe `categorias` da lista mesclada (useCategorias) em listas longas.
  */
 export default function CategoriaLabel({
   categoriaId,
+  subcategoriaId,
   categorias,
+  subcategorias,
   style,
   textStyle,
   showIcon = true,
 }) {
   const cat = categorias ? resolverCategoria(categoriaId, categorias) : null;
-  const nome = cat?.nome || formatarLabelCategoria(categoriaId, categorias || []);
+  const sub =
+    subcategoriaId && categoriaId
+      ? subcategorias
+        ? resolverSubcategoria(subcategoriaId, categoriaId, subcategorias)
+        : resolverSubcategoria(subcategoriaId, categoriaId, [])
+      : null;
+
+  const nomeCompleto = subcategorias
+    ? formatarLabelCategoriaCompleta(categoriaId, subcategoriaId, categorias || [], subcategorias)
+    : subcategoriaId && sub
+      ? `${cat?.nome || formatarLabelCategoria(categoriaId, categorias || [])} › ${sub.nome}`
+      : cat?.nome || formatarLabelCategoria(categoriaId, categorias || []);
 
   if (!categoriaId) {
     return (
@@ -28,7 +46,7 @@ export default function CategoriaLabel({
   if (!showIcon || !cat) {
     return (
       <Text style={[styles.text, textStyle, style]} numberOfLines={1}>
-        {nome}
+        {nomeCompleto}
       </Text>
     );
   }
@@ -39,7 +57,7 @@ export default function CategoriaLabel({
         <AppIcon name={cat.icone || 'pricetag-outline'} size={14} color={cat.cor || '#6B7280'} />
       </View>
       <Text style={[styles.text, textStyle]} numberOfLines={1}>
-        {nome}
+        {nomeCompleto}
       </Text>
     </View>
   );

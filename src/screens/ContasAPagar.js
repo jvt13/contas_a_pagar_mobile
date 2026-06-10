@@ -30,7 +30,7 @@ export default function ContasAPagar() {
     alturaDisponivel,
     getLabelCartao,
   } = useRelatorioContas('/contas_pendentes', 'contasPendentes');
-  const { categorias } = useCategorias();
+  const { categorias, getSubcategorias } = useCategorias();
 
   const totalPendente = contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
 
@@ -98,7 +98,9 @@ export default function ContasAPagar() {
                         </Text>
                         <CategoriaLabel
                           categoriaId={item.categoria}
+                          subcategoriaId={item.subcategoria}
                           categorias={categorias}
+                          subcategorias={getSubcategorias(item.categoria)}
                           textStyle={styles.cellSubtext}
                         />
                       </View>
@@ -107,7 +109,9 @@ export default function ContasAPagar() {
                       </Text>
                       <CategoriaLabel
                         categoriaId={item.categoria}
+                        subcategoriaId={item.subcategoria}
                         categorias={categorias}
+                        subcategorias={getSubcategorias(item.categoria)}
                         textStyle={styles.cell}
                         style={{ width: 110 }}
                       />

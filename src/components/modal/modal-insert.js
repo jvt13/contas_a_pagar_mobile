@@ -17,6 +17,7 @@ import { OPCOES_RECORRENCIA, isCategoriaFixa } from '../../utils/recorrencia';
 import useCartaoManager from '../../hooks/useCartaoManager';
 import useNovaConta from '../../hooks/useNovaConta';
 import CategorySelectorField from '../categorias/CategorySelectorField';
+import SubcategorySelectorField from '../categorias/SubcategorySelectorField';
 
 export default function Modal_Nova_Conta({
   visible,
@@ -78,6 +79,7 @@ export default function Modal_Nova_Conta({
         parseInt(contaSelecionada.tipo_cartao_id ?? contaSelecionada.tipo_cartao, 10) || '',
       nome: extrairNomeBaseParcela(contaSelecionada.nome) || contaSelecionada.nome || '',
       categoria: contaSelecionada.categoria || '',
+      subcategoria: contaSelecionada.subcategoria || '',
       vencimento: contaSelecionada.vencimento || '',
       valor: contaSelecionada.valor?.toString() || '',
       conta_user: contaSelecionada.conta_user || '',
@@ -101,6 +103,7 @@ export default function Modal_Nova_Conta({
       tipo_cartao: '',
       nome: '',
       categoria: '',
+      subcategoria: '',
       vencimento: '',
       valor: '',
       conta_user: '',
@@ -267,10 +270,17 @@ export default function Modal_Nova_Conta({
               setForm((current) => ({
                 ...current,
                 categoria: id,
+                subcategoria: '',
                 // Compatibilidade: categoria legado "fixa" ativa recorrência automaticamente.
                 recorrente: isCategoriaFixa(id) ? true : current.recorrente,
               }))
             }
+          />
+
+          <SubcategorySelectorField
+            parentId={form.categoria}
+            value={form.subcategoria}
+            onChange={(id) => setForm((current) => ({ ...current, subcategoria: id }))}
           />
 
           <View style={styles.row}>

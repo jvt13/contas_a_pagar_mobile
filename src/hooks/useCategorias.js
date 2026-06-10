@@ -2,9 +2,13 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   CATEGORIAS_PADRAO,
+  SUBCATEGORIAS_PADRAO,
   mesclarCategorias,
+  mesclarSubcategorias,
   resolverCategoria,
+  resolverSubcategoria,
   slugifyCategoria,
+  isCategoriaRaiz,
 } from '../utils/categorias';
 import { STORAGE_KEYS } from '../utils/authSession';
 
@@ -44,6 +48,11 @@ export default function useCategorias() {
 
   const categorias = useMemo(
     () => mesclarCategorias(CATEGORIAS_PADRAO, custom),
+    [custom]
+  );
+
+  const getSubcategorias = useCallback(
+    (parentId) => mesclarSubcategorias(SUBCATEGORIAS_PADRAO, custom, parentId),
     [custom]
   );
 
@@ -98,11 +107,64 @@ export default function useCategorias() {
     [categorias]
   );
 
+  const getSubcategoria = useCallback(
+    (parentId, subcategoriaId) =>
+      resolverSubcategoria(subcategoriaId, parentId, getSubcategorias(parentId)),
+    [getSubcategorias]
+  );
+
+  const criarSubcategoria = useCallback(
+    async (parentId, { nome, icone, cor }) => {
+      const parentStr = String(parentId || '').trim();
+      if (!parentStr) {
+        throw new Error('Selecione a categoria pai.');
+      }
+
+      const nomeTrim = String(nome || '').trim();
+      if (!nomeTrim) {
+        throw new Error('Informe o nome da subcategoria.');
+      }
+
+      const pai = getCategoria(parentStr);
+      const corFinal = cor || pai?.cor || '#1E4DB7';
+      const iconeFinal = icone || 'pricetag-outline';
+
+      let id = slugifyCategoria(nomeTrim);
+      if (!id) {
+        id = `sub_${Date.now()}`;
+      }
+
+      const subsExistentes = getSubcategorias(parentStr);
+      if (subsExistentes.some((s) => s.id === id)) {
+        id = `${id}_${Date.now().toString(36).slice(-4)}`;
+      }
+
+      const nova = {
+        id,
+        nome: nomeTrim,
+        parent_id: parentStr,
+        icone: iconeFinal,
+        cor: corFinal,
+        custom: true,
+      };
+
+      const novasCustom = [...custom.filter((c) => c.id !== nova.id), nova];
+      await salvarCustom(novasCustom);
+      return nova;
+    },
+    [custom, getCategoria, getSubcategorias, salvarCustom]
+  );
+
   return {
     categorias,
+    custom,
     loading,
     carregar,
     criarCategoria,
+    criarSubcategoria,
     getCategoria,
+    getSubcategoria,
+    getSubcategorias,
+    isCategoriaRaiz,
   };
 }

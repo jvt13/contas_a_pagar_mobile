@@ -27,6 +27,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSel
     tipo_cartao: '',
     nome: '',
     categoria: '',
+    subcategoria: '',
     vencimento: '',
     valor: '',
     conta_user: '',
@@ -122,6 +123,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSel
     const payload = {
       ...form,
       nome: extrairNomeBaseParcela(nome),
+      subcategoria: form.subcategoria || null,
       ano: anoCompetencia,
       mes: mesCompetencia,
       vencimento: vencimentoNormalizado,
@@ -191,6 +193,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSel
       tipo_cartao: '',
       nome: '',
       categoria: '',
+      subcategoria: '',
       vencimento: '',
       valor: '',
       conta_user: '',
