@@ -46,6 +46,63 @@ function CustomCheckBox({ value, onValueChange }) {
   );
 }
 
+// Uso único na Home: barra compacta de uso do limite mensal (total lançado vs limite).
+function UsoLimiteCard({ totais, contas }) {
+  const previsto = Number(totais?.total_limite) || 0;
+
+  const totalLancado = useMemo(() => {
+    const lista = Array.isArray(contas) ? contas : [];
+    return lista.reduce((acc, conta) => acc + (Number(conta?.valor) || 0), 0);
+  }, [contas]);
+
+  const temLimite = previsto > 0;
+  const saldo = temLimite ? previsto - totalLancado : null;
+  const percentualReal = temLimite ? (totalLancado / previsto) * 100 : null;
+  const percentualBarra =
+    percentualReal !== null ? Math.min(100, Math.max(0, percentualReal)) : 0;
+  const corUso =
+    percentualReal > 100 ? '#D64545' : percentualReal > 80 ? '#E6A817' : '#1E8E5A';
+
+  return (
+    <View style={styles.cardUsoLimite}>
+      <Text style={styles.tituloUsoLimite}>Uso do limite do mês</Text>
+
+      {temLimite ? (
+        <>
+          <View style={styles.barraUsoLimiteTrack}>
+            <View
+              style={[
+                styles.barraUsoLimiteFill,
+                { width: `${percentualBarra}%`, backgroundColor: corUso },
+              ]}
+            />
+          </View>
+          <View style={styles.linhaUsoLimite}>
+            <Text style={[styles.percentualUsoLimite, { color: corUso }]}>
+              {Math.round(percentualReal)}%
+            </Text>
+            <Text
+              style={[
+                styles.saldoUsoLimite,
+                saldo < 0 ? styles.estouroUsoLimite : styles.saldoRestanteUsoLimite,
+              ]}
+            >
+              {saldo < 0
+                ? `Estouro de ${formatCurrency(Math.abs(saldo))}`
+                : `Saldo restante: ${formatCurrency(saldo)}`}
+            </Text>
+          </View>
+        </>
+      ) : (
+        <>
+          <Text style={styles.semLimiteTexto}>Sem limite definido</Text>
+          <Text style={styles.semLimiteDica}>Defina seu limite na Central de Controle</Text>
+        </>
+      )}
+    </View>
+  );
+}
+
 export default function AppContent() {
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear().toString());
@@ -201,6 +258,8 @@ export default function AppContent() {
           </View>
         ))}
       </View>
+
+      <UsoLimiteCard totais={totais} contas={contas} />
 
       <View
         style={[styles.tabelaContainer, { height: Math.max(alturaDisponivel, 280) }]}
@@ -440,6 +499,66 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '800',
     color: '#16324F',
+  },
+  cardUsoLimite: {
+    width: '100%',
+    padding: 14,
+    borderRadius: 14,
+    marginVertical: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D9E4F2',
+    elevation: 3,
+    shadowColor: '#17305C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  tituloUsoLimite: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#33415C',
+    marginBottom: 10,
+  },
+  barraUsoLimiteTrack: {
+    height: 10,
+    backgroundColor: '#E8EEF5',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  barraUsoLimiteFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+  linhaUsoLimite: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  percentualUsoLimite: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  saldoUsoLimite: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  saldoRestanteUsoLimite: {
+    color: '#1E8E5A',
+  },
+  estouroUsoLimite: {
+    color: '#D64545',
+  },
+  semLimiteTexto: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#5D6F86',
+  },
+  semLimiteDica: {
+    marginTop: 4,
+    fontSize: 12,
+    color: '#6B7A90',
   },
   tabelaContainer: {
     marginTop: 16,
