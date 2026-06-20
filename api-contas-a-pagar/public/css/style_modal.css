@@ -1,0 +1,256 @@
+/* Estilos base para o modal */
+.modal-cartao {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1010;
+    overflow-y: auto;
+}
+
+.modal-cartao__content {
+    background-color: #f8f9fa;
+    margin: 2% auto;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 95%;
+    max-width: 600px;
+    position: relative;
+}
+
+.modal-cartao__close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 24px;
+    font-weight: bold;
+    color: #aaa;
+    cursor: pointer;
+}
+
+.modal-cartao__close:hover {
+    color: #333;
+}
+
+.modal-cartao__title {
+    color: #333;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 1.3rem;
+}
+
+/* Estilos otimizados do formulário */
+.modal-cartao__form {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.modal-cartao__label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 3px;
+    font-size: 0.9rem;
+}
+
+.modal-cartao__input,
+.modal-cartao__select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* Container especial para os campos numéricos */
+.numeric-field-group {
+    display: flex;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+.numeric-field {
+    flex: 1;
+    padding: 5px;
+    position: relative;
+}
+
+.numeric-field:not(:last-child) {
+    border-right: 1px solid #ced4da;
+}
+
+.numeric-field label {
+    display: block;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.8rem;
+    margin-bottom: 3px;
+    padding-left: 5px;
+}
+
+.numeric-field input {
+    width: 90%;
+    padding: 8px 5px;
+    background-color: #f1ecec;
+    border: none;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.numeric-field input:focus {
+    outline: none;
+    background-color: #f8f9fa;
+}
+
+.modal-cartao__button {
+    background-color: #28a745;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background-color 0.3s;
+    margin-top: 5px;
+}
+
+.modal-cartao__button:hover {
+    background-color: #218838;
+}
+
+/* Estilos otimizados da tabela */
+.modal-cartao__table-container {
+    max-height: 40vh;
+    min-height: 40vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: #fff;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-cartao__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.modal-cartao__table thead {
+    position: sticky;
+    top: 0;
+}
+
+.modal-cartao__table thead th {
+    padding: 10px;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #e9ecef;
+    color: #040505;
+    text-align: center;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/*.modal-cartao__table th,*/
+.modal-cartao__table td {
+    padding: 8px 10px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+  
+
+.modal-cartao__table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+/* Estilos responsivos */
+@media (max-width: 480px) {
+    .modal-cartao__content {
+      width: 95%;
+      padding: 15px;
+      margin: 5% auto;
+    }
+  
+    .modal-cartao__form {
+      grid-template-columns: 1fr;
+      padding: 10px 0;
+    }
+  
+    .numeric-field-group {
+      flex-direction: row;
+    }
+  
+    .numeric-field input {
+      width: 100%;
+      padding: 5px 0;
+    }
+  
+    .modal-cartao__button {
+      font-size: 1rem;
+      padding: 12px;
+    }
+  
+    .modal-cartao__table-container {
+      max-height: 35vh;
+      font-size: 0.85rem;
+    }
+  
+    .modal-cartao__table td,
+    .modal-cartao__table th {
+      font-size: 0.85rem;
+      padding: 6px;
+    }
+  
+    .modal-cartao__acoes {
+      flex-direction: column;
+      gap: 4px;
+    }
+  
+    .modal-cartao__acoes button {
+      width: 100%;
+    }
+  }  
+
+/* Estilos para os botões de ação na tabela */
+.modal-cartao__acoes {
+    display: flex;
+    gap: 5px;
+}
+
+.modal-cartao__acoes button {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: opacity 0.3s;
+}
+
+.modal-cartao__acoes:hover {
+    opacity: 0.8;
+}
+
+.modal-cartao__button-edit {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.modal-cartao__button-delete {
+    background-color: #dc3545;
+    color: white;
+}

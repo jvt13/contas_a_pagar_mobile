@@ -1,0 +1,137 @@
+// database/models/query_config.js
+import pool from '../conexao.js';
+
+/**
+ * Insere um novo tipo de cartão no banco de dados.
+ * @param {string} nome - Nome do cartão.
+ * @param {string} tipo_cartao - Tipo do cartão.
+ * @param {string} vencimento - Data de vencimento.
+ * @param {number} dia_util - Dia útil do cartão.
+ * @param {number} numero_parcelas - Número de parcelas.
+ * @returns {Promise<Object>} Objeto com o ID do novo registro.
+ */
+export async function insert(nome, tipo_cartao, vencimento, dia_util, conta_user, organization, numero_parcelas, limite_credito, banco_slug) {
+    console.log('Inserindo novo tipo de cartão:', {
+        nome,
+        tipo_cartao,
+        vencimento,
+        dia_util,
+        numero_parcelas,
+        limite_credito,
+        banco_slug,
+    });
+    const sql = `
+    INSERT INTO tipo_cartao (nome, tipo_cartao, vencimento, dia_util, conta_user, organization, numero_parcelas, limite_credito, banco_slug)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING id
+  `;
+
+    try {
+        const res = await pool.query(sql, [
+            nome,
+            tipo_cartao,
+            vencimento,
+            dia_util,
+            conta_user,
+            organization,
+            numero_parcelas ?? null,
+            limite_credito ?? null,
+            banco_slug ?? null,
+        ]);
+        console.log('Novo tipo de cartão inserido com ID:', res.rows[0].id);
+        return res.rows[0];
+    } catch (err) {
+        console.error('Erro ao inserir tipo de cartão:', err);
+        throw err;
+    }
+}
+
+/**
+ * Retorna todos os tipos de cartão cadastrados.
+ * @returns {Promise<Array>} Lista de cartões.
+ */
+export async function selectAll(orgaId) {
+    const sql = 'SELECT * FROM tipo_cartao WHERE organization = $1 ORDER BY nome';
+
+    try {
+        const res = await pool.query(sql, [orgaId]);
+        return res.rows;
+    } catch (err) {
+        console.error('Erro ao buscar cartões:', err);
+        throw err;
+    }
+}
+
+/**
+ * Retorna um tipo de cartão específico pelo ID.
+ * @param {number} id - ID do cartão.
+ * @returns {Promise<Object>} Dados do cartão.
+ */
+export async function selectId(id) {
+    const sql = 'SELECT * FROM tipo_cartao WHERE id = $1';
+
+    try {
+        const res = await pool.query(sql, [id]);
+        return res.rows[0];
+    } catch (err) {
+        console.error('Erro ao buscar cartão:', err);
+        throw err;
+    }
+}
+
+/**
+ * Atualiza um tipo de cartão existente.
+ * @param {number} id - ID do cartão.
+ * @param {string} nome - Novo nome.
+ * @param {string} tipo_cartao - Novo tipo.
+ * @param {string} vencimento - Novo vencimento.
+ * @param {number} dia_util - Novo dia útil.
+ * @param {number} numero_parcelas - Novo número de parcelas.
+ * @returns {Promise<Object>} Dados atualizados.
+ */
+export async function update(id, nome, tipo_cartao, vencimento, dia_util, conta_user, organization, numero_parcelas, limite_credito, banco_slug) {
+    const sql = `
+    UPDATE tipo_cartao
+    SET nome = $1, tipo_cartao = $2, vencimento = $3, dia_util = $4, conta_user = $5, organization = $6, numero_parcelas = $7, limite_credito = $8, banco_slug = $9
+    WHERE id = $10
+    RETURNING *
+  `;
+
+    try {
+        const res = await pool.query(sql, [
+            nome,
+            tipo_cartao,
+            vencimento,
+            dia_util,
+            conta_user,
+            organization,
+            numero_parcelas ?? null,
+            limite_credito ?? null,
+            banco_slug ?? null,
+            id,
+        ]);
+        console.log('Cartão atualizado:', res.rows[0]);
+        return res.rows[0];
+    } catch (err) {
+        console.error('Erro ao atualizar cartão:', err);
+        throw err;
+    }
+}
+
+/**
+ * Exclui um tipo de cartão pelo ID.
+ * @param {number} id - ID do cartão.
+ * @returns {Promise<Object>} Dados do cartão excluído.
+ */
+export async function deleteId(id) {
+    const sql = 'DELETE FROM tipo_cartao WHERE id = $1 RETURNING *';
+
+    try {
+        const res = await pool.query(sql, [id]);
+        console.log('Cartão excluído:', res.rows[0]);
+        return res.rows[0];
+    } catch (err) {
+        console.error('Erro ao excluir cartão:', err);
+        throw err;
+    }
+}

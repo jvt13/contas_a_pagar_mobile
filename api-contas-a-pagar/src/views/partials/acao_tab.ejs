@@ -1,0 +1,226 @@
+<!-- Modal de Ações da Conta -->
+<div id="modalConta" class="modal_acao_tab" style="display: none;">
+    <div class="modal-conteudo">
+        <span class="fechar" onclick="fecharModalConta()">&times;</span>
+        <h2 id="modalContaTitulo">Conta Selecionada</h2>
+        <p id="modalContaInfo"></p>
+
+        <div class="modal-botoes">
+            <button id="btn-conta-editar" onclick="editarConta()">Editar</button>
+            <button id="btn-conta-excluir" onclick="excluirConta(contaSelecionadaId)">Excluir</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { postDados, putDados, getDados, deleteDados } from '../../public/js/utils/services.js';
+    import { abrirModal, fecharModal, showToast } from '../../public/js/utils/util.js';
+
+    // Exporta as funções necessárias para o escopo global
+    window.deleteDados = deleteDados;
+    window.getDados = getDados;
+    window.showToast = showToast;
+    window.getDadosTab = getDadosTab;
+    window.abrirModal = abrirModal;
+
+    window.getContasID = async function (url, id) {
+        try {
+            console.log(`Buscando conta ID: ${id}`);
+            const response = await getDados(url + id);
+
+            console.log('Status:', response.status);
+            if (response.status === 200) {
+                const data = await response.json();
+                console.log('Dados recebidos:', data);
+                return data;
+            }
+            throw new Error(`Erro HTTP: ${response.status}`);
+        } catch (error) {
+            console.error('Erro ao buscar dados:', error);
+            throw error;
+        }
+    };
+
+    window.updateDados = async function (url, id, data) {
+        try {
+            const response = await putDados(url + id, data);
+            if (response.status === 200) {
+                showToast('Conta atualizada com sucesso!');
+                // Atualiza a tabela
+                const form = document.getElementById('form_selector');
+                const ano = form.querySelector("#ano").value;
+                const mes = form.querySelector("#inputMes").value;
+                getDadosTab(ano, mes);
+            } else {
+                showToast('Erro ao atualizar a conta.');
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar a conta:', error);
+            showToast('Erro ao atualizar a conta.');
+        }
+    };
+</script>
+
+<script>
+    let contaSelecionadaId = null;
+
+    function abrirModalConta(id, nome) {
+        contaSelecionadaId = id;
+        document.getElementById('modalContaInfo').innerText = `Conta: ${nome}`;
+        document.getElementById('modalConta').style.display = 'block';
+    }
+
+    function fecharModalConta() {
+        document.getElementById('modalConta').style.display = 'none';
+        contaSelecionadaId = null;
+    }
+
+    async function excluirConta(id) {
+        /*if (!confirm(`Tem certeza que deseja excluir esta conta, com o ID ${id}?`)) {
+            return;
+        }*/
+
+        try {
+            await window.deleteDados('/delete_conta/' + id);
+            window.showToast('Conta excluída com sucesso!');
+            // Atualiza a tabela
+            const form = document.getElementById('form_selector');
+            const ano = form.querySelector("#contas-selector-ano").value;
+            const mes = form.querySelector("#contas-selector-mes").value;
+            window.getDadosTab(ano, mes);
+            fecharModalConta();
+        } catch (error) {
+            console.error('Erro ao excluir a conta:', error);
+            window.showToast('Erro ao excluir a conta.');
+        }
+    }
+
+    async function editarConta() {
+        try {
+            console.log('ID editarConta():', contaSelecionadaId);
+            const form_add = document.getElementById('modal-form-add-conta');
+
+            if (!form_add) {
+                throw new Error('Formulário de edição não encontrado');
+            }
+
+            try {
+                console.log(`Buscando conta ID: ${contaSelecionadaId}`);
+                const response = await window.getDados('/get_conta_id/' + contaSelecionadaId);
+
+                console.log('Status:', response.success);
+                if (response.success) {
+                    window.abrirModal('modal-add-conta');
+                    console.log('Dados recebidos:', response);
+                    const conta = response.data;
+
+                    // Verifica se cada elemento existe antes de tentar definir o valor
+                    const tipoSelect = form_add.querySelector('select[name="tipoCartao"]');
+                    const nomeInput = form_add.querySelector('input[name="nome"]');
+                    const vencimentoInput = form_add.querySelector('input[name="vencimento"]');
+                    const valorInput = form_add.querySelector('input[name="valor"]');
+                    const categoriaSelect = form_add.querySelector('select[name="categoria"]');
+                    const tipoCartaoSelect = form_add.querySelector('select[name="tipo_cartao"]');
+
+                    if (nomeInput) nomeInput.value = conta.nome || '';
+                    if (vencimentoInput) vencimentoInput.value = conta.vencimento || '';
+                    if (valorInput) valorInput.value = conta.valor || 0;
+                    if (tipoSelect) tipoSelect.value = conta.tipo_cartao || '';
+                    if (categoriaSelect) categoriaSelect.value = conta.categoria || '';
+                    if (tipoCartaoSelect) tipoCartaoSelect.value = conta.tipo_cartao || '';
+
+                    fecharModalConta();
+                } else {
+                    throw new Error('Erro ao buscar dados da conta');
+                }
+            } catch (error) {
+                console.error('Erro ao buscar dados:', error);
+                throw error;
+            }
+        } catch (error) {
+            console.error('Erro ao editar conta:', error);
+            window.showToast(`Erro: ${error.message}`);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', configurarClickLongoTabela);
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const table = document.getElementById('lista');
+        let longPressTimer = null;
+        const longPressDuration = 500;
+
+        function handleLongPress(target) {
+            if (!target) return;
+            const id = target.getAttribute('data-id');
+            const nome = target.getAttribute('data-nome');
+            if (id && nome) {
+                abrirModalConta(id, nome);
+            }
+        }
+
+        function startTouchTimer(e) {
+            const target = e.target.closest('tr');
+            if (!target) return;
+
+            let moved = false;
+
+            function cancel() {
+                clearTimeout(longPressTimer);
+                target.removeEventListener('touchmove', onMove);
+                target.removeEventListener('touchend', cancel);
+                target.removeEventListener('touchcancel', cancel);
+            }
+
+            function onMove() {
+                moved = true;
+                cancel();
+            }
+
+            longPressTimer = setTimeout(() => {
+                if (!moved) {
+                    handleLongPress(target);
+                }
+            }, longPressDuration);
+
+            target.addEventListener('touchmove', onMove);
+            target.addEventListener('touchend', cancel);
+            target.addEventListener('touchcancel', cancel);
+        }
+
+        function startMouseTimer(e) {
+            const target = e.target.closest('tr');
+            if (!target) return;
+
+            let moved = false;
+
+            function cancel() {
+                clearTimeout(longPressTimer);
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', cancel);
+            }
+
+            function onMove() {
+                moved = true;
+                cancel();
+            }
+
+            longPressTimer = setTimeout(() => {
+                if (!moved) {
+                    handleLongPress(target);
+                }
+            }, longPressDuration);
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', cancel);
+        }
+
+        table.addEventListener('touchstart', startTouchTimer);
+        table.addEventListener('mousedown', startMouseTimer);
+
+        table.addEventListener('contextmenu', (e) => e.preventDefault());
+    });
+
+</script>

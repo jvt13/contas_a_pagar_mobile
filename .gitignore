@@ -38,10 +38,16 @@ yarn-error.*
 
 # backend local secrets
 api-contas-a-pagar/.env
+api-contas-a-pagar/.env.*
+!api-contas-a-pagar/.env.example
 api-contas-a-pagar/cert/
+api-contas-a-pagar/node_modules/
+api-contas-a-pagar/logs/
+api-contas-a-pagar/**/*.log
 
 # PostgreSQL backups (local, nunca versionar)
 api-contas-a-pagar/backups/
+api-contas-a-pagar/**/*.dump
 
 # typescript
 *.tsbuildinfo

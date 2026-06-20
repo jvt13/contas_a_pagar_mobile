@@ -1,0 +1,111 @@
+<link rel="stylesheet" href="/public/css/modal-add-conta.css" />
+<!-- Não está funcionando, devido os nomes das classes-->
+<div id="modal-add-conta" class="modal-cartao">
+    <div class="modal-cartao__content">
+        <span id="modal-add-conta-fechar" class="modal-cartao__close"
+            onclick="fecharModal('modal-add-conta')">&times;</span>
+        <h2 class="modal-cartao__title">Adicionar Nova Conta</h2>
+
+        <form id="modal-form-add-conta" onsubmit="return validaFormAdd(event)" class="modal-cartao__form">
+            <input type="hidden" name="ano" value="<%= anoSelecionado %>">
+            <input type="hidden" name="mes" value="<%= mesSelecionado %>">
+
+            <label class="modal-cartao__label">Tipo de Cartão:</label>
+            <select class="modal-cartao__select" id="tipo_cartao" name="tipoCartao" onchange="trataSelect(event)">
+                <option value="">Selecione</option>
+                <% if (Array.isArray(cartoes) && cartoes.length> 0) { %>
+                    <% cartoes.forEach(cartao=> { %>
+                        <option value="<%= cartao.id %>">
+                            <%= cartao.nome %>
+                        </option>
+                        <% }); %>
+                            <% } else { %>
+                                <option value="">Nenhum cartão disponível</option>
+                                <% } %>
+            </select>
+
+            <label class="modal-cartao__label">Tipo de gasto:</label>
+            <input class="modal-cartao__input" name="nome" required placeholder="Nome do gasto" type="text"
+                oninput="this.value = this.value.replace(/[^a-zA-Z0-9 ]/g, '')" />
+
+            <label class="modal-cartao__label">Categoria:</label>
+            <select class="modal-cartao__select" id="categoria" name="categoria">
+                <option value="">Selecione</option>
+                <option value="fixa">Fixa</option>
+                <option value="variavel">Variável</option>
+                <option value="renda">Renda</option>
+            </select>
+
+            <div class="numeric-field-group">
+                <div class="numeric-field">
+                    <label>Vencimento:</label>
+                    <input id="form-cad-vencimento" type="date" name="vencimento" required>
+                </div>
+                <div class="numeric-field">
+                    <label>Valor:</label>
+                    <input type="text" name="valor" placeholder="Valor" required>
+                </div>
+            </div>
+
+            <button class="modal-cartao__button" type="submit">Salvar Conta</button>
+        </form>
+    </div>
+</div>
+
+<script type="module">
+    import { postDados, putDados, getDados, deleteDados } from '../../public/js/utils/services.js';
+    import { abrirModal, fecharModal, showToast } from '../../public/js/utils/util.js';
+
+    async function getCartaoSelecionado(url, id) {
+        try {
+            console.log(`Buscando cartao ID: ${id}`);
+            const response = await getDados(url + id); // Isso já retorna um objeto JavaScript
+
+            console.log('Status:', response.success); // Aqui está correto agora
+            if (response.success) {
+                console.log('Dados recebidos:', response.data);
+                return response.data;
+            } else {
+                throw new Error(response.message || 'Erro ao buscar cartão');
+            }
+        } catch (error) {
+            console.error('Erro ao buscar dados:', error);
+            throw error;
+        }
+    }
+
+
+    window.getCartaoSelecionado = getCartaoSelecionado
+</script>
+
+<script>
+    // Botão para fechar modal
+    const btnFecharModal = document.getElementById('modal-add-conta-fechar');
+
+    btnFecharModal.onclick = function () {
+        const modal = document.getElementById('modal-add-conta');
+        modal.style.display = 'none';
+    }
+
+    async function trataSelect(event) {
+        const valorSelecionado = event.target.value;
+        console.log('Valor selecionado:', valorSelecionado);
+
+        if (valorSelecionado) {
+            try {
+                const result = await getCartaoSelecionado('/get_cartao_id/', valorSelecionado);
+
+                console.log('Tipo Cartão:', result.nome);
+                console.log('Vencimento:', result.vencimento);
+
+                document.getElementById('form-cad-vencimento').value = result.vencimento || '';
+            } catch (error) {
+                console.error('Erro ao buscar dados do cartão:', error);
+            }
+        } else {
+            console.log('Nenhum valor selecionado.');
+        }
+    }
+
+
+</script>
