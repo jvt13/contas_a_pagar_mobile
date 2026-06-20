@@ -37,13 +37,12 @@ export default function Modal_Nova_Conta({
     mes,
     onSuccess,
     editarConta,
-    cartaoSelecionado
+    cartoes
   );
 
-  const ehDebito = isCartaoDebito(cartaoSelecionado);
-
   const tipoCartaoId = String(form.tipo_cartao || '');
-  const cartaoSelecionado = cartoes.find((c) => String(c.id) === tipoCartaoId);
+  const cartaoSelecionado = cartoes.find((c) => String(c.id) === tipoCartaoId) || null;
+  const ehDebito = isCartaoDebito(cartaoSelecionado);
 
   const cartoesOptions = [
     { label: 'Selecione', value: '' },

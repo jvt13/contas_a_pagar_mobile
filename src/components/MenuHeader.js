@@ -122,6 +122,7 @@ export default function MenuHeader({ onOpenConfig }) {
             <MenuItem text="Home" onPress={() => handleNavigation('Home')} icon="home-outline" />
             <MenuItem text="Dashboard Cartões" onPress={() => handleNavigation('DashboardCartoes')} icon="card-outline" />
             {/*<MenuItem text="Relatório" onPress={() => handleNavigation('Home')} icon="bar-chart-outline" /> */}
+            <MenuItem text="Relatório por Categoria" onPress={() => handleNavigation('RelatorioCategorias')} icon="pie-chart-outline" />
             <MenuItem text="Contas Pagas" onPress={() => handleNavigation('ContasPagas')} icon="checkmark-done-outline" />
             <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} icon="time-outline" />
             <MenuItem text="Central de Controle" onPress={handleOpenModal} icon="settings-outline" />

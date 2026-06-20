@@ -11,6 +11,7 @@ import AppContent from './src/screens/AppContent';
 import ContasPagas from './src/screens/ContasPagas';
 import ContasAPagar from './src/screens/ContasAPagar';
 import DashboardCartoes from './src/screens/DashboardCartoes';
+import RelatorioCategorias from './src/screens/RelatorioCategorias';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
 
@@ -90,6 +91,11 @@ export default function App() {
             name="DashboardCartoes"
             component={DashboardCartoes}
             options={{ title: 'Dashboard Cartões' }}
+          />
+          <Stack.Screen
+            name="RelatorioCategorias"
+            component={RelatorioCategorias}
+            options={{ title: 'Relatório por Categoria' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

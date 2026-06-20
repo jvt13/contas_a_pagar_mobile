@@ -29,12 +29,17 @@ export default function useCartaoManager() {
       }
 
       const res = await getDados(`/get_cartoes?orgaId=${keyShareId}`);
-      if (res.success) {
+      if (res?.success && Array.isArray(res.data)) {
         setCartoes(res.data);
-        //console.log('Cartões carregados:', res.data);
+      } else if (Array.isArray(res?.data)) {
+        setCartoes(res.data);
+      } else if (Array.isArray(res?.result)) {
+        setCartoes(res.result);
       } else {
-        //Alert.alert('Atenção', res.mensagem || 'Erro ao carregar cartões');
-        msgToast(res.mensagem || 'Erro ao carregar cartões', 'error');
+        setCartoes([]);
+        if (res?.success === false && res?.mensagem) {
+          console.warn('[useCartaoManager] carregarCartoes:', res.mensagem);
+        }
       }
     } catch (error) {
       Alert.alert('Erro', 'Falha ao conectar com servidor');

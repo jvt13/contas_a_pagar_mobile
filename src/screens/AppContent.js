@@ -26,6 +26,7 @@ import { deleteDados } from '../utils/services';
 import { formatCurrency, mesesOptions, msgToast, obterMensagemErro } from '../utils/util';
 import {
   contaPertenceGrupoParcela,
+  extrairNomeBaseParcela,
   perguntarEscopoParcela,
 } from '../utils/parcelamento';
 import { verificarAtualizacao } from '../utils/check_version';
@@ -103,6 +104,115 @@ function UsoLimiteCard({ totais, contas }) {
   );
 }
 
+function isGrupoParcelamentoHome(conta) {
+  return Boolean(conta?.grupo_parcelamento && Number(conta?.total_parcelas) > 1);
+}
+
+function isGrupoRecorrenciaHome(conta) {
+  return Boolean(conta?.grupo_recorrencia && Number(conta?.total_recorrencias) > 1);
+}
+
+function montarContasExibidasHome(contas) {
+  if (!Array.isArray(contas) || contas.length === 0) {
+    return [];
+  }
+
+  const parcelasMap = new Map();
+  const recorrenciasMap = new Map();
+
+  for (const conta of contas) {
+    if (isGrupoParcelamentoHome(conta)) {
+      const key = conta.grupo_parcelamento;
+      if (!parcelasMap.has(key)) {
+        parcelasMap.set(key, []);
+      }
+      parcelasMap.get(key).push(conta);
+      continue;
+    }
+
+    if (isGrupoRecorrenciaHome(conta)) {
+      const key = conta.grupo_recorrencia;
+      if (!recorrenciasMap.has(key)) {
+        recorrenciasMap.set(key, []);
+      }
+      recorrenciasMap.get(key).push(conta);
+    }
+  }
+
+  const parcelasProcessadas = new Map();
+
+  for (const [key, parcelas] of parcelasMap) {
+    const ordenadas = [...parcelas].sort(
+      (a, b) => (Number(a.parcela_atual) || 0) - (Number(b.parcela_atual) || 0)
+    );
+    const primeira = ordenadas[0];
+    const totalParcelas = Number(primeira.total_parcelas) || ordenadas.length;
+    const valorParcela = Number(primeira.valor) || 0;
+    const valorTotal = ordenadas.reduce((acc, parcela) => acc + (Number(parcela.valor) || 0), 0);
+
+    parcelasProcessadas.set(key, {
+      ...primeira,
+      id: `grupo-parcela-${key}`,
+      _consolidadoParcelamento: true,
+      _contaRepresentativa: primeira,
+      nome: extrairNomeBaseParcela(primeira.nome),
+      vencimento: primeira.vencimento,
+      valor: valorTotal,
+      _infoParcelamento: `${totalParcelas}x de ${formatCurrency(valorParcela)}`,
+      paga: ordenadas.every((parcela) => Boolean(parcela.paga)),
+    });
+  }
+
+  const recorrenciasProcessadas = new Map();
+
+  for (const [key, ocorrencias] of recorrenciasMap) {
+    const ordenadas = [...ocorrencias].sort(
+      (a, b) => (Number(a.recorrencia_atual) || 0) - (Number(b.recorrencia_atual) || 0)
+    );
+    const primeira = ordenadas[0];
+    const totalRecorrencias = Number(primeira.total_recorrencias) || ordenadas.length;
+    const valorMensal = Number(primeira.valor) || 0;
+
+    recorrenciasProcessadas.set(key, {
+      ...primeira,
+      id: `grupo-recorrencia-${key}`,
+      _consolidadoRecorrencia: true,
+      _contaRepresentativa: primeira,
+      nome: extrairNomeBaseParcela(primeira.nome),
+      vencimento: primeira.vencimento,
+      valor: valorMensal,
+      _infoRecorrencia: `${totalRecorrencias} recorrências de ${formatCurrency(valorMensal)}`,
+      paga: ordenadas.every((ocorrencia) => Boolean(ocorrencia.paga)),
+    });
+  }
+
+  const parcelasEmitidas = new Set();
+  const recorrenciasEmitidas = new Set();
+
+  return contas.reduce((lista, conta) => {
+    if (isGrupoParcelamentoHome(conta)) {
+      const key = conta.grupo_parcelamento;
+      if (!parcelasEmitidas.has(key)) {
+        parcelasEmitidas.add(key);
+        lista.push(parcelasProcessadas.get(key));
+      }
+      return lista;
+    }
+
+    if (isGrupoRecorrenciaHome(conta)) {
+      const key = conta.grupo_recorrencia;
+      if (!recorrenciasEmitidas.has(key)) {
+        recorrenciasEmitidas.add(key);
+        lista.push(recorrenciasProcessadas.get(key));
+      }
+      return lista;
+    }
+
+    lista.push(conta);
+    return lista;
+  }, []);
+}
+
 export default function AppContent() {
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear().toString());
@@ -128,6 +238,8 @@ export default function AppContent() {
     sharedOrgKey
   );
   const { categorias, getSubcategorias } = useCategorias();
+
+  const contasExibidas = useMemo(() => montarContasExibidasHome(contas), [contas]);
 
   useEffect(() => {
     if (posicaoTabelaY > 0) {
@@ -282,8 +394,8 @@ export default function AppContent() {
           </View>
         ) : (
           <FlatList
-            data={contas}
-            keyExtractor={(item) => item.id.toString()}
+            data={contasExibidas}
+            keyExtractor={(item) => String(item.id)}
             renderItem={({ item }) => (
               <View
                 style={[
@@ -292,7 +404,7 @@ export default function AppContent() {
                 ]}
               >
                 <TouchableOpacity
-                  onLongPress={() => handleLongPress(item)}
+                  onLongPress={() => handleLongPress(item._contaRepresentativa || item)}
                   delayLongPress={250}
                   style={styles.itemContent}
                 >
@@ -300,6 +412,16 @@ export default function AppContent() {
                     <Text style={styles.itemTitulo} numberOfLines={1}>
                       {item.nome}
                     </Text>
+                    {item._infoParcelamento ? (
+                      <Text style={styles.itemParcelamento} numberOfLines={1}>
+                        {item._infoParcelamento}
+                      </Text>
+                    ) : null}
+                    {item._infoRecorrencia ? (
+                      <Text style={styles.itemRecorrencia} numberOfLines={1}>
+                        {item._infoRecorrencia}
+                      </Text>
+                    ) : null}
                     <CategoriaLabel
                       categoriaId={item.categoria}
                       subcategoriaId={item.subcategoria}
@@ -309,11 +431,19 @@ export default function AppContent() {
                     />
                   </View>
                   <Text style={styles.coluna}>{item.vencimento}</Text>
-                  <Text style={styles.coluna}>{formatCurrency(item.valor)}</Text>
-                  <CustomCheckBox
-                    value={!!item.paga}
-                    onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
-                  />
+                  <Text style={styles.coluna}>
+                    {item._consolidadoRecorrencia
+                      ? `${formatCurrency(item.valor)}/mês`
+                      : formatCurrency(item.valor)}
+                  </Text>
+                  {item._consolidadoParcelamento || item._consolidadoRecorrencia ? (
+                    <View style={styles.checkboxPlaceholder} />
+                  ) : (
+                    <CustomCheckBox
+                      value={!!item.paga}
+                      onValueChange={(novoValor) => marcarComoPaga(item.id, novoValor)}
+                    />
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -612,6 +742,18 @@ const styles = StyleSheet.create({
     color: '#6B7A90',
     marginTop: 2,
   },
+  itemParcelamento: {
+    fontSize: 12,
+    color: '#1E4DB7',
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  itemRecorrencia: {
+    fontSize: 12,
+    color: '#0F7B6C',
+    fontWeight: '700',
+    marginTop: 2,
+  },
   coluna: {
     width: '22%',
     fontSize: 13,
@@ -633,6 +775,10 @@ const styles = StyleSheet.create({
   checkboxUnchecked: {
     backgroundColor: '#fff',
     borderColor: '#8CA0B3',
+  },
+  checkboxPlaceholder: {
+    width: 24,
+    height: 24,
   },
   feedbackContainer: {
     flex: 1,

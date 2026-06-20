@@ -40,5 +40,8 @@ yarn-error.*
 api-contas-a-pagar/.env
 api-contas-a-pagar/cert/
 
+# PostgreSQL backups (local, nunca versionar)
+api-contas-a-pagar/backups/
+
 # typescript
 *.tsbuildinfo

@@ -22,7 +22,7 @@ import {
 
 export { OPCOES_PARCELAS };
 
-export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSelecionado = null) {
+export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes = []) {
   const [form, setForm] = useState({
     tipo_cartao: '',
     nome: '',
@@ -61,6 +61,9 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartaoSel
       return Alert.alert('Erro', 'Preencha todos os campos.');
     }
 
+    const cartaoSelecionado = (Array.isArray(cartoes) ? cartoes : []).find(
+      (c) => String(c.id) === String(form.tipo_cartao)
+    ) || null;
     const ehDebito = isCartaoDebito(cartaoSelecionado);
 
     if (ehDebito && !editarConta && (parcelado || recorrente)) {
