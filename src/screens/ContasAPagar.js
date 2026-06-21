@@ -105,7 +105,7 @@ export default function ContasAPagar() {
                         />
                       </View>
                       <Text style={[styles.cell, { width: 130 }]} numberOfLines={2}>
-                        {getLabelCartao(item.tipo_cartao)}
+                        {getLabelCartao(item.tipo_cartao_id ?? item.tipo_cartao)}
                       </Text>
                       <CategoriaLabel
                         categoriaId={item.categoria}
