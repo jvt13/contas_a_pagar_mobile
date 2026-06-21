@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getDados } from '../utils/services';
 import { buildQueryParams, obterMensagemErro } from '../utils/util';
 import useCartoesLookup from './useCartoesLookup';
+import { obterLimiteMensal } from './useLimites';
 
 export default function useRelatorioContas(endpoint, listaKey) {
   const { getLabelCartao, cartoes } = useCartoesLookup();
@@ -25,7 +26,10 @@ export default function useRelatorioContas(endpoint, listaKey) {
     try {
       const organization = await AsyncStorage.getItem('@userKeyShareId');
       const query = buildQueryParams({ ano, mes, organization });
-      const data = await getDados(`${endpoint}?${query}`);
+      const [data, limiteMensal] = await Promise.all([
+        getDados(`${endpoint}?${query}`),
+        obterLimiteMensal(ano, mes, organization),
+      ]);
 
       if (!data?.success) {
         Alert.alert('Erro', data?.message || 'Falha ao carregar dados.');
@@ -40,7 +44,7 @@ export default function useRelatorioContas(endpoint, listaKey) {
 
       setAnosOptions(anosArray);
       setContas(data[listaKey] || []);
-      setLimiteMes(data.total_limite || data.limiteDoMes || 0);
+      setLimiteMes(limiteMensal);
     } catch (error) {
       Alert.alert('Erro', obterMensagemErro(error, 'Falha ao conectar com o servidor.'));
     } finally {

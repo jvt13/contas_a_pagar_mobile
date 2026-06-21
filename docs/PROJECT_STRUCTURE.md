@@ -44,7 +44,7 @@ Aplicativo mobile de **controle de contas pessoais**: lançamento de contas (des
 2. `App.js` registra o handler de 401, verifica `hasValidSession()` e decide a rota inicial (`Home` ou `Login`).
 3. `Login` → `POST /auth/login` → `saveSession()` → navega para `Home`.
 4. `Home` (`AppContent.js`) lista as contas do mês via `useContas` (`POST /contas_lancadas`), exibe totais, permite criar/editar/excluir contas, marcar como paga e abrir a Central de Controle (limite, cartões, organização).
-5. Telas de relatório (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`) e `DashboardCartoes` são acessadas pelo menu (`MenuHeader`).
+5. Telas de relatório (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`) e `DashboardCartoes` são acessadas pelo menu (`MenuHeader`).
 
 ```
 index.js → App.js (NavigationContainer + Stack)
@@ -56,6 +56,7 @@ index.js → App.js (NavigationContainer + Stack)
   ├── ContasAPagar ── useRelatorioContas('/contas_pendentes')
   ├── ContasPagas ─── useRelatorioContas('/contas_pagas')
   ├── RelatorioCategorias ─ useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
+  ├── MetasFinanceiras ─── useMetasFinanceiras (AsyncStorage) + useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
   └── DashboardCartoes ── useDashboardCartoes (useFocusEffect)
 ```
 
@@ -107,7 +108,7 @@ controle_contas/
 ### Raiz
 
 #### `App.js`
-- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 7 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`.
+- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 9 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`.
 - **Utilizado por**: `index.js`.
 - **Dependências**: `src/screens/*`, `src/utils/services.js` (`setUnauthorizedHandler`), `src/utils/authSession.js` (`clearSession`, `hasValidSession`).
 - **Impacto de alteração**: Quebra navegação inteira, fluxo de login/logout automático e tratamento de sessão expirada.
@@ -263,6 +264,13 @@ controle_contas/
 - **Endpoints**: `GET /dashboard/cartoes?orgaId=` (preferencial). **Fallback**: `Promise.all` de `GET /get_cartoes` + `GET /contas_pendentes?organization=&ano=&mes=` → monta no client com `montarDashboardCartoes` (tolerância a backend antigo).
 - **Utilizado por**: `DashboardCartoes.js`.
 
+### `src/hooks/useMetasFinanceiras.js` — `useMetasFinanceiras()`
+- **Responsabilidade**: Metas financeiras por categoria (valor limite mensal recorrente). Persistência local por organização (AsyncStorage `@metas_financeiras_<orgId>`). Sem backend.
+- **Entradas**: nenhuma.
+- **Saídas**: `{ metas, loading, carregar, salvarMeta({ categoriaId, valor }), excluirMeta(categoriaId) }`.
+- **Regras embutidas**: uma meta por categoria (upsert por `categoriaId`); valor normalizado como string `"NNNN.NN"`; `salvarMeta` valida categoria e valor > 0.
+- **Utilizado por**: `MetasFinanceiras.js`.
+
 ### `src/hooks/useLimites.js` — *não é hook React* (módulo de funções de API)
 - **Responsabilidade**: Domínio "limite de gasto mensal". Exporta `obterIdLimite(ano, mes, organization)`, `atualizarLimite(ano, mes, limite, id)`, `inserirLimite(ano, mes, limite, user, organization)`.
 - **Endpoints**: `POST /limit_list` (retorna `id` ou `null`); `PUT /salvar_limite` (`tipo: 'update'`); `POST /salvar_limite` (`tipo: 'insert'`).
@@ -274,7 +282,7 @@ controle_contas/
 - **Entradas**: `endpoint` (`'/contas_pendentes'` ou `'/contas_pagas'`), `listaKey` (`'contasPendentes'` ou `'contasPagas'`).
 - **Saídas**: `{ ano, setAno, mes, setMes, anosOptions, contas, limiteMes, loading, posicaoTabelaY, setPosicaoTabelaY, alturaDisponivel, loadContas, getLabelCartao, cartoes }`.
 - **Endpoints**: `GET <endpoint>?ano=&mes=&organization=` (+ `GET /get_cartoes` via `useCartoesLookup`).
-- **Regras embutidas**: defaults = mês/ano atuais; aceita `total_limite` ou `limiteDoMes` na resposta; `alturaDisponivel = screenHeight - posicaoTabelaY - 130`.
+- **Regras embutidas**: defaults = mês/ano atuais; `limiteMes` via `obterLimiteMensal` (`POST /contas_lancadas`, mês 0-based no filtro); `alturaDisponivel = screenHeight - posicaoTabelaY - 130`.
 - **Utilizado por**: `ContasAPagar.js`, `ContasPagas.js`.
 
 ---
@@ -328,6 +336,18 @@ controle_contas/
 - **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` → unificação client-side por `id` (sem duplicatas) → agrupamento (`useMemo`) por `categoria`/`subcategoria` com totais, quantidades e percentuais. Cards: total no período, pago, pendente. Estados: loading, vazio.
 
+### `src/screens/MetasFinanceiras.js` (rota `MetasFinanceiras`)
+- **Objetivo**: MVP de metas financeiras por categoria no mês selecionado (eixo = **vencimento**): cadastro, edição, exclusão e acompanhamento de gasto vs meta com faixas de status (verde ≤80%, amarelo >80–100%, vermelho >100%).
+- **Hooks**: `useMetasFinanceiras()`, `useCategorias()`.
+- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategorySelectorField`, `CategoriaLabel`.
+- **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` → unificação por `id` → agregação client-side (`useMemo`) de gasto por categoria; metas carregadas do AsyncStorage; percentual = gasto ÷ meta × 100. Recarrega via `useFocusEffect`.
+
+### `src/screens/DashboardFinanceiro.js` (rota `DashboardFinanceiro`)
+- **Objetivo**: Painel consolidado da situação financeira do mês (eixo = **vencimento**): resumo Limite mensal/Despesas/Disponível, composição Crédito/Débito/Dinheiro, top 5 categorias e indicadores rápidos (pagas, pendentes, uso do limite, utilização dos cartões).
+- **Hooks**: `useCategorias()`, `useCartoesLookup()` (mapa id→cartão), `useDashboardCartoes()` (`useFocusEffect` → utilização dos cartões).
+- **Componentes**: `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` (`useLimites` → `POST /contas_lancadas`, mesma fonte/conversão da Home) → unificação por `id` → agregações client-side (`useMemo`): **Limite mensal** = `total_limite` retornado por `obterLimiteMensal`; **Despesas** = soma de valores no período (vencimento); **Disponível** = limite − despesas (se limite ≤ 0, exibe "Sem limite definido"); composição por tipo de cartão; top 5 categorias; indicadores rápidos; utilização dos cartões via `useDashboardCartoes`. Sem endpoint novo.
+
 ---
 
 ## 6. Componentes
@@ -338,7 +358,7 @@ controle_contas/
 |---|---|---|---|
 | `AppIcon.js` | Mapeia nomes semânticos → Ionicons (`APP_ICONS`); também exporta `ModalCloseButton` | `name`, `size=22`, `color='#555'`, `style`, `accessibilityLabel`; ModalCloseButton: `onPress`, `style`, `color`, `size` | Quase todos os componentes/telas |
 | `CartaoLabel.js` | Exibe label "Nome - Tipo" do cartão (busca via `useCartoesLookup` se `cartoes` não for passado) | `cartaoId`, `cartao`, `cartoes`, `style`, `numberOfLines=1` | **Sem consumidores ativos** (candidato a remoção/adoção) |
-| `MenuHeader.js` | Header azul com menu hamburger (Home, Dashboard Cartões, Relatório por Categoria, Contas Pagas, Contas a Pagar, Central de Controle, Sair) + avatar/nome do usuário | `onOpenConfig` | `AppContent.js`, `DashboardCartoes.js` |
+| `MenuHeader.js` | Header azul com menu hamburger (Home, Dashboard Financeiro, Dashboard Cartões, Relatório por Categoria, Metas Financeiras, Contas Pagas, Contas a Pagar, Central de Controle, Sair) + avatar/nome do usuário | `onOpenConfig` | `AppContent.js`, `DashboardCartoes.js` |
 
 - `MenuHeader` faz **logout**: `clearSession()` + `navigation.reset` para `Login`. Lê `@username` do AsyncStorage.
 
@@ -407,8 +427,8 @@ O projeto não possui pasta `services/`; a camada de serviço fica em `src/utils
 - **Integrações**: AsyncStorage. Sessão válida = `@userId` + `@userKeyShareId`.
 
 ### `src/hooks/useLimites.js` — Serviço de limites (apesar do nome/pasta)
-- **Métodos expostos**: `obterIdLimite`, `atualizarLimite`, `inserirLimite`.
-- **Integrações**: `POST /limit_list`, `POST|PUT /salvar_limite`.
+- **Métodos expostos**: `obterIdLimite`, `obterLimiteMensal`, `atualizarLimite`, `inserirLimite`.
+- **Integrações**: `POST /limit_list`, `POST /contas_lancadas` (somente `total_limite` via `obterLimiteMensal`), `POST|PUT /salvar_limite`.
 
 ### `src/utils/check_version.js` — Serviço de atualização
 - **Métodos expostos**: `verificarAtualizacao()`.
@@ -502,6 +522,7 @@ Consumidores: `conexao.js` (pool da API), `estrutura.js` (CREATE DATABASE), `scr
 | `@userKeyShare` | Chave legível da organização | `saveSession` |
 | `@userKeyShareId` | **Id da organização** (usado em todas as chamadas) | `saveSession` |
 | `@categorias_custom_<orgId>` | JSON com categorias/subcategorias custom (`{id, nome, icone, cor, parent_id?, custom: true}`) | `useCategorias` |
+| `@metas_financeiras_<orgId>` | JSON com metas por categoria (`[{ categoriaId, valor }]`, valor string `"NNNN.NN"`) | `useMetasFinanceiras` |
 
 > Categorias **padrão** vivem em código (`utils/categorias.js`); o backend recebe apenas o slug nas contas.
 
@@ -538,7 +559,7 @@ Consumidores: `conexao.js` (pool da API), `estrutura.js` (CREATE DATABASE), `scr
 
 ### Cálculo de Resumos
 - **Home**: totais (`total_limite`, `total_contas`, `total_contas_pagas`, `total_contas_pendentes`) vêm **do backend** na resposta de `POST /contas_lancadas` e alimentam os 4 cards.
-- **Relatórios**: `totalPendente`/`totalPago` são calculados **no client** (`reduce` sobre as contas retornadas); `limiteMes` vem da API (`total_limite` ou `limiteDoMes`).
+- **Relatórios**: `totalPendente`/`totalPago` são calculados **no client** (`reduce` sobre as contas retornadas); `limiteMes` via `obterLimiteMensal` em `useRelatorioContas` (mesma fonte da Home/Dashboard Financeiro).
 - **Dashboard de cartões**:
   1. `DashboardCartoes` ganha foco → `useDashboardCartoes.carregar()`.
   2. Preferencial: `GET /dashboard/cartoes?orgaId=` (backend agrega).
@@ -627,6 +648,11 @@ RelatorioCategorias
  └─ getDados ───────────────── GET /contas_pendentes + GET /contas_pagas → unificação por id → agrupamento por categoria/subcategoria
       └─ useCategorias ─────── AsyncStorage (@categorias_custom_<orgId>)
 
+MetasFinanceiras
+ ├─ useMetasFinanceiras ────── AsyncStorage (@metas_financeiras_<orgId>)
+ └─ getDados ───────────────── GET /contas_pendentes + GET /contas_pagas → gasto por categoria (useMemo)
+      └─ useCategorias ─────── AsyncStorage (@categorias_custom_<orgId>)
+
 DashboardCartoes
  └─ useDashboardCartoes ────── GET /dashboard/cartoes
       └─ (fallback) GET /get_cartoes + GET /contas_pendentes → utils/dashboardCartao
@@ -700,6 +726,8 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-06-20 | Nova tela Metas Financeiras (MVP) | `src/screens/MetasFinanceiras.js`, `src/hooks/useMetasFinanceiras.js`, `App.js`, `MenuHeader.js` |
+| 2026-06-20 | Nova tela Dashboard Financeiro Geral | `src/screens/DashboardFinanceiro.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Auditoria segurança PG + doc §8 | `postgres-config.js`, `BACKUP_AND_RESTORE.md`, `DEPLOY_VPS.md`, `.gitignore` |
 | 2026-06-20 | PostgreSQL via env (postgres-config.js) | `src/database/postgres-config.js`, `conexao.js`, `estrutura.js` |
 | 2026-06-15 | Backup/restore PostgreSQL + doc | `api-contas-a-pagar/scripts/backup-database.js`, `postgres-env.js`, `docs/BACKUP_AND_RESTORE.md` |

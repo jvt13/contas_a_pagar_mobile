@@ -52,6 +52,77 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-06-20 — Metas Financeiras (MVP)
+
+- **Tipo**: Nova tela + Novo hook + Nova chave AsyncStorage.
+- **Descrição**: MVP de metas financeiras por categoria: cadastro/edição/exclusão de valor limite mensal recorrente (local), acompanhamento de gasto atual no mês (eixo vencimento) com percentual e faixas de status. Reutiliza endpoints existentes e padrão AsyncStorage de categorias custom; sem endpoint novo.
+- **Arquivos impactados**:
+  - `src/screens/MetasFinanceiras.js` (criado)
+  - `src/hooks/useMetasFinanceiras.js` (criado)
+  - `App.js` (alterado — rota `MetasFinanceiras`)
+  - `src/components/MenuHeader.js` (alterado — item de menu)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum novo (reutiliza `GET /contas_pendentes`, `GET /contas_pagas`).
+- **Impacto para consumidores**: nenhum nas telas existentes; nova rota no stack e menu; nova chave `@metas_financeiras_<orgId>` no AsyncStorage.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §4 (hook), §5 (tela), §6 (MenuHeader), §8 (storage), §11, §14.
+
+---
+
+### 2026-06-20 — Dashboard Financeiro Geral (MVP)
+
+- **Tipo**: Nova tela.
+- **Descrição**: Painel consolidado da situação financeira do mês (eixo vencimento): resumo Limite mensal/Despesas/Disponível, composição Crédito/Débito/Dinheiro, top 5 categorias e indicadores rápidos. Reutiliza endpoints e hooks existentes; agregação client-side na tela. Limite mensal = orçamento (`total_limite`), não receita.
+- **Arquivos impactados**:
+  - `src/screens/DashboardFinanceiro.js` (criado)
+  - `App.js` (alterado — rota `DashboardFinanceiro`)
+  - `src/components/MenuHeader.js` (alterado — item de menu)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum (reutiliza `GET /contas_pendentes`, `GET /contas_pagas`, `GET /dashboard/cartoes`, `GET /get_cartoes` via hooks).
+- **Impacto para consumidores**: nenhum nas telas existentes; nova rota no stack e menu.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §5 (telas), §6 (MenuHeader), §14.
+
+---
+
+### 2026-06-20 — Correção: limite mensal em Contas a Pagar / Contas Pagas
+
+- **Tipo**: Correção de bug (frontend).
+- **Descrição**: `useRelatorioContas` deixou de ler `total_limite`/`limiteDoMes` de `/contas_pendentes` e `/contas_pagas` (campos inexistentes). Passou a usar `obterLimiteMensal`, alinhado ao Dashboard Financeiro e à Home.
+- **Arquivos impactados**:
+  - `src/hooks/useRelatorioContas.js` (alterado)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum (reutiliza `POST /contas_lancadas` via `obterLimiteMensal`).
+- **Impacto para consumidores**: `ContasAPagar` e `ContasPagas` exibem limite correto por mês/ano.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §4 (`useRelatorioContas`), §9.
+
+---
+
+### 2026-06-20 — Correção: limite mensal no Dashboard Financeiro
+
+- **Tipo**: Correção de bug (frontend).
+- **Descrição**: Dashboard buscava `total_limite` em `/contas_pendentes` e `/contas_pagas`, que não retornam limite. Passou a usar `obterLimiteMensal` (`POST /contas_lancadas`, mês 0-based no filtro, conversão 1-based no backend — igual à Home).
+- **Arquivos impactados**:
+  - `src/hooks/useLimites.js` (alterado — `obterLimiteMensal`)
+  - `src/screens/DashboardFinanceiro.js` (alterado)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum (reutiliza `POST /contas_lancadas` já existente).
+- **Impacto para consumidores**: apenas Dashboard Financeiro exibe limite correto por mês/ano.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §5, §7 (`useLimites.js`).
+
+---
+
+### 2026-06-20 — Correção semântica: Dashboard Financeiro (limite ≠ receita)
+
+- **Tipo**: Correção de comportamento/UI (sem mudança estrutural).
+- **Descrição**: Renomeados indicadores do resumo: Receitas → Limite mensal, Saldo → Disponível. Limite tratado como orçamento; sem limite definido exibe estado explícito em vez de valor zerado.
+- **Arquivos impactados**:
+  - `src/screens/DashboardFinanceiro.js` (alterado)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: apenas textos e rótulos do Dashboard Financeiro.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §5 (`DashboardFinanceiro.js`).
+
+---
+
 ### 2026-06-20 — Auditoria de segurança PostgreSQL
 
 - **Tipo**: Correção de configuração / documentação (backend).

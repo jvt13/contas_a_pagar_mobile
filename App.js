@@ -12,6 +12,8 @@ import ContasPagas from './src/screens/ContasPagas';
 import ContasAPagar from './src/screens/ContasAPagar';
 import DashboardCartoes from './src/screens/DashboardCartoes';
 import RelatorioCategorias from './src/screens/RelatorioCategorias';
+import DashboardFinanceiro from './src/screens/DashboardFinanceiro';
+import MetasFinanceiras from './src/screens/MetasFinanceiras';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
 
@@ -96,6 +98,16 @@ export default function App() {
             name="RelatorioCategorias"
             component={RelatorioCategorias}
             options={{ title: 'Relatório por Categoria' }}
+          />
+          <Stack.Screen
+            name="DashboardFinanceiro"
+            component={DashboardFinanceiro}
+            options={{ title: 'Dashboard Financeiro' }}
+          />
+          <Stack.Screen
+            name="MetasFinanceiras"
+            component={MetasFinanceiras}
+            options={{ title: 'Metas Financeiras' }}
           />
         </Stack.Navigator>
       </NavigationContainer>
