@@ -14,6 +14,7 @@ import DashboardCartoes from './src/screens/DashboardCartoes';
 import RelatorioCategorias from './src/screens/RelatorioCategorias';
 import DashboardFinanceiro from './src/screens/DashboardFinanceiro';
 import MetasFinanceiras from './src/screens/MetasFinanceiras';
+import FechamentoMensal from './src/screens/FechamentoMensal';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
 
@@ -108,6 +109,11 @@ export default function App() {
             name="MetasFinanceiras"
             component={MetasFinanceiras}
             options={{ title: 'Metas Financeiras' }}
+          />
+          <Stack.Screen
+            name="FechamentoMensal"
+            component={FechamentoMensal}
+            options={{ title: 'Fechamento Mensal' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

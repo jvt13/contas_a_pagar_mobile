@@ -44,7 +44,7 @@ Aplicativo mobile de **controle de contas pessoais**: lançamento de contas (des
 2. `App.js` registra o handler de 401, verifica `hasValidSession()` e decide a rota inicial (`Home` ou `Login`).
 3. `Login` → `POST /auth/login` → `saveSession()` → navega para `Home`.
 4. `Home` (`AppContent.js`) lista as contas do mês via `useContas` (`POST /contas_lancadas`), exibe totais, permite criar/editar/excluir contas, marcar como paga e abrir a Central de Controle (limite, cartões, organização).
-5. Telas de relatório (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`) e `DashboardCartoes` são acessadas pelo menu (`MenuHeader`).
+5. Telas de relatório (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`) e `DashboardCartoes` são acessadas pelo menu (`MenuHeader`).
 
 ```
 index.js → App.js (NavigationContainer + Stack)
@@ -57,6 +57,7 @@ index.js → App.js (NavigationContainer + Stack)
   ├── ContasPagas ─── useRelatorioContas('/contas_pagas')
   ├── RelatorioCategorias ─ useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
   ├── MetasFinanceiras ─── useMetasFinanceiras (AsyncStorage) + useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
+  ├── FechamentoMensal ─── useFechamentoMensal (AsyncStorage snapshot) + GET /contas_pendentes + /contas_pagas + obterLimiteMensal (eixo vencimento)
   └── DashboardCartoes ── useDashboardCartoes (useFocusEffect)
 ```
 
@@ -108,7 +109,7 @@ controle_contas/
 ### Raiz
 
 #### `App.js`
-- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 9 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`.
+- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 10 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`.
 - **Utilizado por**: `index.js`.
 - **Dependências**: `src/screens/*`, `src/utils/services.js` (`setUnauthorizedHandler`), `src/utils/authSession.js` (`clearSession`, `hasValidSession`).
 - **Impacto de alteração**: Quebra navegação inteira, fluxo de login/logout automático e tratamento de sessão expirada.
@@ -271,6 +272,13 @@ controle_contas/
 - **Regras embutidas**: uma meta por categoria (upsert por `categoriaId`); valor normalizado como string `"NNNN.NN"`; `salvarMeta` valida categoria e valor > 0.
 - **Utilizado por**: `MetasFinanceiras.js`.
 
+### `src/hooks/useFechamentoMensal.js` — `useFechamentoMensal()`
+- **Responsabilidade**: Snapshots de fechamento mensal por organização (AsyncStorage `@fechamentos_mensais_<orgId>`). Sem backend; **não bloqueia** edição de contas — apenas registro/conferência local.
+- **Entradas**: nenhuma.
+- **Saídas**: `{ fechamentos, loading, carregar, obterFechamento(ano, mes), salvarFechamento(snapshot), removerFechamento(ano, mes) }`.
+- **Regras embutidas**: id do fechamento = `"<ano>-<mes>"` (mes 0-based string); upsert por id; `status: 'fechado'`; `fechadoEm` ISO ao salvar; reabrir = remover registro do array.
+- **Utilizado por**: `FechamentoMensal.js`.
+
 ### `src/hooks/useLimites.js` — *não é hook React* (módulo de funções de API)
 - **Responsabilidade**: Domínio "limite de gasto mensal". Exporta `obterIdLimite(ano, mes, organization)`, `atualizarLimite(ano, mes, limite, id)`, `inserirLimite(ano, mes, limite, user, organization)`.
 - **Endpoints**: `POST /limit_list` (retorna `id` ou `null`); `PUT /salvar_limite` (`tipo: 'update'`); `POST /salvar_limite` (`tipo: 'insert'`).
@@ -347,6 +355,13 @@ controle_contas/
 - **Hooks**: `useCategorias()`, `useCartoesLookup()` (mapa id→cartão), `useDashboardCartoes()` (`useFocusEffect` → utilização dos cartões).
 - **Componentes**: `CustomPicker` (ano/mês), `CategoriaLabel`.
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` (`useLimites` → `POST /contas_lancadas`, mesma fonte/conversão da Home) → unificação por `id` → agregações client-side (`useMemo`): **Limite mensal** = `total_limite` retornado por `obterLimiteMensal`; **Despesas** = soma de valores no período (vencimento); **Disponível** = limite − despesas (se limite ≤ 0, exibe "Sem limite definido"); composição por tipo de cartão; top 5 categorias; indicadores rápidos; utilização dos cartões via `useDashboardCartoes`. Sem endpoint novo.
+
+### `src/screens/FechamentoMensal.js` (rota `FechamentoMensal`)
+- **Objetivo**: MVP de fechamento mensal — consolidar e salvar snapshot do resumo financeiro do mês (eixo = **vencimento**) para conferência. **Não bloqueia** edição de contas, pagamentos ou limites.
+- **Hooks**: `useFechamentoMensal()` (persistência local), `useCategorias()`.
+- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Utils**: `resumoFinanceiroVencimento.js` (`unificarContasPorVencimento`, `montarResumoFechamento`, `montarAnosOptions`).
+- **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` → unificação por `id` → `montarResumoFechamento` (prévia em tempo real) → salvar/reabrir/atualizar snapshot via AsyncStorage (`@fechamentos_mensais_<orgId>`). Atualizar fechamento existente exige confirmação. Recarrega via `useFocusEffect`.
 
 ---
 
@@ -523,6 +538,7 @@ Consumidores: `conexao.js` (pool da API), `estrutura.js` (CREATE DATABASE), `scr
 | `@userKeyShareId` | **Id da organização** (usado em todas as chamadas) | `saveSession` |
 | `@categorias_custom_<orgId>` | JSON com categorias/subcategorias custom (`{id, nome, icone, cor, parent_id?, custom: true}`) | `useCategorias` |
 | `@metas_financeiras_<orgId>` | JSON com metas por categoria (`[{ categoriaId, valor }]`, valor string `"NNNN.NN"`) | `useMetasFinanceiras` |
+| `@fechamentos_mensais_<orgId>` | JSON com snapshots de fechamento mensal (`[{ id, ano, mes, status, limiteMensal, despesasTotais, totalPago, totalPendente, disponivel, percentualUso, quantidadeContas, quantidadePagas, quantidadePendentes, topCategorias, observacao, fechadoEm }]`) | `useFechamentoMensal` |
 
 > Categorias **padrão** vivem em código (`utils/categorias.js`); o backend recebe apenas o slug nas contas.
 
@@ -653,6 +669,12 @@ MetasFinanceiras
  └─ getDados ───────────────── GET /contas_pendentes + GET /contas_pagas → gasto por categoria (useMemo)
       └─ useCategorias ─────── AsyncStorage (@categorias_custom_<orgId>)
 
+FechamentoMensal
+ ├─ useFechamentoMensal ────── AsyncStorage (@fechamentos_mensais_<orgId>)
+ ├─ obterLimiteMensal ──────── POST /contas_lancadas
+ └─ getDados ───────────────── GET /contas_pendentes + GET /contas_pagas → resumoFinanceiroVencimento (useMemo)
+      └─ useCategorias ─────── AsyncStorage (@categorias_custom_<orgId>)
+
 DashboardCartoes
  └─ useDashboardCartoes ────── GET /dashboard/cartoes
       └─ (fallback) GET /get_cartoes + GET /contas_pendentes → utils/dashboardCartao
@@ -726,6 +748,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-06-20 | Nova tela Fechamento Mensal (MVP) | `src/screens/FechamentoMensal.js`, `src/hooks/useFechamentoMensal.js`, `src/utils/resumoFinanceiroVencimento.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Metas Financeiras (MVP) | `src/screens/MetasFinanceiras.js`, `src/hooks/useMetasFinanceiras.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Dashboard Financeiro Geral | `src/screens/DashboardFinanceiro.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Auditoria segurança PG + doc §8 | `postgres-config.js`, `BACKUP_AND_RESTORE.md`, `DEPLOY_VPS.md`, `.gitignore` |

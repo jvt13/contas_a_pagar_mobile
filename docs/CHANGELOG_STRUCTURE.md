@@ -52,6 +52,23 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-06-20 — Fechamento Mensal (MVP)
+
+- **Tipo**: Nova tela + Novo hook + Novo util + Nova chave AsyncStorage.
+- **Descrição**: MVP de fechamento mensal: prévia financeira do mês (eixo vencimento), snapshot local por organização com limite, despesas, pagos/pendentes, top categorias e observação opcional. Permite fechar, reabrir e atualizar fechamento com confirmação. **Não bloqueia** edição de contas — registro/conferência apenas. Sem endpoint novo.
+- **Arquivos impactados**:
+  - `src/screens/FechamentoMensal.js` (criado)
+  - `src/hooks/useFechamentoMensal.js` (criado)
+  - `src/utils/resumoFinanceiroVencimento.js` (criado)
+  - `App.js` (alterado — rota `FechamentoMensal`)
+  - `src/components/MenuHeader.js` (alterado — item de menu)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum novo (reutiliza `GET /contas_pendentes`, `GET /contas_pagas`, `POST /contas_lancadas` via `obterLimiteMensal`).
+- **Impacto para consumidores**: nenhum nas telas existentes; nova rota no stack e menu; nova chave `@fechamentos_mensais_<orgId>` no AsyncStorage.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §4 (hook), §5 (tela), §6 (MenuHeader), §8 (storage), §11, §14.
+
+---
+
 ### 2026-06-20 — Metas Financeiras (MVP)
 
 - **Tipo**: Nova tela + Novo hook + Nova chave AsyncStorage.
