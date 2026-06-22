@@ -20,6 +20,15 @@ import Register from './src/screens/Register';
 
 const Stack = createNativeStackNavigator();
 
+const stackScreenOptions = {
+  headerStyle: { backgroundColor: '#1E4DB7' },
+  headerTintColor: '#fff',
+  headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+  headerBackTitleVisible: false,
+  headerShadowVisible: false,
+  contentStyle: { backgroundColor: '#F4F8FF' },
+};
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('Login');
@@ -64,7 +73,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator initialRouteName={initialRoute}>
+        <Stack.Navigator initialRouteName={initialRoute} screenOptions={stackScreenOptions}>
           <Stack.Screen
             name="Login"
             component={Login}

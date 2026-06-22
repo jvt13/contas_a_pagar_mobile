@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import MenuHeader from '../components/MenuHeader';
 import CartaoDashboardCard from '../components/dashboard/CartaoDashboardCard';
 import useDashboardCartoes from '../hooks/useDashboardCartoes';
 
@@ -24,20 +23,17 @@ export default function DashboardCartoes() {
 
   return (
     <View style={styles.container}>
-      <MenuHeader />
-
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={carregar} />}
       >
-        <Text style={styles.titulo}>Dashboard dos Cartões</Text>
         <Text style={styles.subtitulo}>
           Limite, fatura atual e próximos vencimentos por cartão
         </Text>
 
         {loading && resumos.length === 0 ? (
           <View style={styles.feedback}>
-            <ActivityIndicator size="large" color="#3b5998" />
+            <ActivityIndicator size="large" color="#1E4DB7" />
             <Text style={styles.feedbackTexto}>Carregando indicadores...</Text>
           </View>
         ) : null}
@@ -70,22 +66,17 @@ export default function DashboardCartoes() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#EEF4FF',
+    backgroundColor: '#F4F8FF',
   },
   scrollContent: {
     padding: 16,
     paddingBottom: 32,
   },
-  titulo: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#16324F',
-    marginBottom: 4,
-  },
   subtitulo: {
     fontSize: 14,
     color: '#607086',
     marginBottom: 16,
+    lineHeight: 20,
   },
   feedback: {
     alignItems: 'center',
@@ -103,10 +94,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   btnRetry: {
-    backgroundColor: '#3b5998',
+    backgroundColor: '#1E4DB7',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   btnRetryTexto: {
     color: '#fff',

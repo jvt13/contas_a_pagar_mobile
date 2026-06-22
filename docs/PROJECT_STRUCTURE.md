@@ -44,7 +44,7 @@ Aplicativo mobile de **controle de contas pessoais**: lançamento de contas (des
 2. `App.js` registra o handler de 401, verifica `hasValidSession()` e decide a rota inicial (`Home` ou `Login`).
 3. `Login` → `POST /auth/login` → `saveSession()` → navega para `Home`.
 4. `Home` (`AppContent.js`) lista as contas do mês via `useContas` (`POST /contas_lancadas`), exibe totais, permite criar/editar/excluir contas, marcar como paga e abrir a Central de Controle (limite, cartões, organização).
-5. Telas de relatório (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`) e `DashboardCartoes` são acessadas pelo menu (`MenuHeader`).
+5. Telas secundárias (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`) são acessadas pelo menu global da **Home** (`MenuHeader`) e exibem header nativo do Stack (botão Voltar + título), sem `MenuHeader` nem Central de Controle.
 
 ```
 index.js → App.js (NavigationContainer + Stack)
@@ -109,7 +109,7 @@ controle_contas/
 ### Raiz
 
 #### `App.js`
-- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 10 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`.
+- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 10 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`. Define `stackScreenOptions` compartilhado (header azul `#1E4DB7`, botão Voltar, fundo `#F4F8FF`) para telas com header visível; `Home` usa `headerShown: false`.
 - **Utilizado por**: `index.js`.
 - **Dependências**: `src/screens/*`, `src/utils/services.js` (`setUnauthorizedHandler`), `src/utils/authSession.js` (`clearSession`, `hasValidSession`).
 - **Impacto de alteração**: Quebra navegação inteira, fluxo de login/logout automático e tratamento de sessão expirada.
@@ -309,7 +309,7 @@ controle_contas/
 - **Fluxo de dados**: valida obrigatórios + senha ≥ 4 caracteres → `POST /auth/register { name, userName, email, password }` (`userName` cai para parte local do e-mail) → `navigation.replace('Login')`.
 
 ### `src/screens/AppContent.js` (rota `Home`, header oculto) — **tela principal**
-- **Objetivo**: Painel do mês: cards de resumo (limite, total, pagas, pendentes), tabela de contas, criação/edição/exclusão, marcação de paga, Central de Controle.
+- **Objetivo**: Painel do mês: cards de resumo (limite, total, pagas, pendentes), tabela de contas, criação/edição/exclusão, marcação de paga, Central de Controle. Única tela com **menu global** (`MenuHeader`).
 - **Hooks**: `useContas(ano, mes, sharedOrgKey)`, `useCategorias()`, `useCartaoManager` (importado como `useCartoes`; só `carregarCartoes()` no boot).
 - **Componentes**: `MenuHeader`, `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` (local).
 - **Utils diretos**: `deleteDados`, `formatCurrency`, `mesesOptions`, `msgToast`, `obterMensagemErro`, `contaPertenceGrupoParcela`, `perguntarEscopoParcela`, `verificarAtualizacao`, AsyncStorage (`@userKeyShareId`).
@@ -322,7 +322,7 @@ controle_contas/
   6. `ModalShareOrganization.onSave(key)` → atualiza `sharedOrgKey` → reload.
 - **Estados locais**: `ano`, `mes`, visibilidade de 6 modais, `sharedOrgKey`, `contaSelecionada`, `posicaoTabelaY`/`alturaDisponivel` (layout da FlatList).
 
-### `src/screens/ContasAPagar.js` (rota `ContasAPagar`)
+### `src/screens/ContasAPagar.js` (rota `ContasAPagar`, header nativo do Stack)
 - **Objetivo**: Relatório somente leitura das contas **pendentes** do mês/ano (eixo = vencimento).
 - **Hooks**: `useRelatorioContas('/contas_pendentes', 'contasPendentes')`, `useCategorias()`.
 - **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
@@ -332,11 +332,11 @@ controle_contas/
 - **Objetivo**: Relatório somente leitura das contas **pagas** do mês/ano. Estrutura idêntica à `ContasAPagar`, trocando endpoint (`/contas_pagas`), chave (`contasPagas`), total (`totalPago`) e cores (verde). **Não há ação para "despagar"** — isso só existe na Home.
 - **Hooks/Componentes**: iguais a `ContasAPagar`.
 
-### `src/screens/DashboardCartoes.js` (rota `DashboardCartoes`)
+### `src/screens/DashboardCartoes.js` (rota `DashboardCartoes`, header nativo do Stack)
 - **Objetivo**: Painel agregado por cartão (limite, utilizado, fatura atual, próximos vencimento/fechamento; débito: gastos do mês).
-- **Hooks**: `useDashboardCartoes()`, `useFocusEffect` (recarrega a cada foco), `useState` (`modalConfigVisible`).
-- **Componentes**: `MenuHeader`, `ModalConfig`, `CartaoDashboardCard` (um por resumo).
-- **Fluxo de dados**: ao focar → `carregar()` → `GET /dashboard/cartoes?orgaId=` (com fallback client-side). Pull-to-refresh via `RefreshControl`. Estados: spinner, erro com "Tentar novamente", vazio.
+- **Hooks**: `useDashboardCartoes()`, `useFocusEffect` (recarrega a cada foco).
+- **Componentes**: `CartaoDashboardCard` (um por resumo).
+- **Fluxo de dados**: ao focar → `carregar()` → `GET /dashboard/cartoes?orgaId=` (com fallback client-side). Pull-to-refresh via `RefreshControl`. Estados: spinner, erro com "Tentar novamente", vazio. Navegação de retorno via botão Voltar do Stack (sem `MenuHeader` nem Central de Controle).
 
 ### `src/screens/RelatorioCategorias.js` (rota `RelatorioCategorias`)
 - **Objetivo**: Relatório de gastos agrupados por categoria e subcategoria no mês/ano selecionado (eixo = **vencimento**, alinhado aos demais relatórios financeiros).
@@ -373,9 +373,9 @@ controle_contas/
 |---|---|---|---|
 | `AppIcon.js` | Mapeia nomes semânticos → Ionicons (`APP_ICONS`); também exporta `ModalCloseButton` | `name`, `size=22`, `color='#555'`, `style`, `accessibilityLabel`; ModalCloseButton: `onPress`, `style`, `color`, `size` | Quase todos os componentes/telas |
 | `CartaoLabel.js` | Exibe label "Nome - Tipo" do cartão (busca via `useCartoesLookup` se `cartoes` não for passado) | `cartaoId`, `cartao`, `cartoes`, `style`, `numberOfLines=1` | **Sem consumidores ativos** (candidato a remoção/adoção) |
-| `MenuHeader.js` | Header azul com menu hamburger (Home, Dashboard Financeiro, Dashboard Cartões, Relatório por Categoria, Metas Financeiras, Contas Pagas, Contas a Pagar, Central de Controle, Sair) + avatar/nome do usuário | `onOpenConfig` | `AppContent.js`, `DashboardCartoes.js` |
+| `MenuHeader.js` | Menu global da Home: hamburger com navegação para telas secundárias, Central de Controle (quando `onOpenConfig` é passado) e Sair; avatar/saudação do usuário | `onOpenConfig` (opcional — exibe item "Central de Controle" somente se for função) | `AppContent.js` (Home) |
 
-- `MenuHeader` faz **logout**: `clearSession()` + `navigation.reset` para `Login`. Lê `@username` do AsyncStorage.
+- `MenuHeader` faz **logout**: `clearSession()` + `navigation.reset` para `Login`. Lê `@username` do AsyncStorage. Telas secundárias **não** renderizam `MenuHeader`; usam header nativo do Stack configurado em `App.js` (`stackScreenOptions`).
 
 ### `src/components/bancos/`
 
@@ -408,7 +408,7 @@ controle_contas/
 | Componente | Responsabilidade | Props | Usado em |
 |---|---|---|---|
 | `CustomPicker.js` | Picker genérico (botão + modal com FlatList de opções `{label, value}`) | `selectedValue`, `onValueChange(value)`, `options`, `placeholder`, `style` | `AppContent` (ano/mês), `ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `modal-insert` (cartão) |
-| `ModalConfig.js` | "Central de Controle": botões Gerenciar limite / Criar novo cartão / Controle de Organização | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent`, `DashboardCartoes` |
+| `ModalConfig.js` | "Central de Controle": botões Gerenciar limite / Criar novo cartão / Controle de Organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
 | `ModalContaAcoes.js` | Modal de long-press na conta: mostra nome, label de parcela/recorrência + status, botões Editar/Excluir | `visible`, `onClose`, `contaSelecionada`, `onEditar`, `onExcluir` | `AppContent` |
 | `ModalGerenciarCartao.js` | CRUD de cartões: banco (grid), apelido, tipo (chips crédito/débito), dias de vencimento/fechamento e limite (só crédito), lista com Editar/Excluir. Usa `useCartaoManager` | `visible`, `onClose` | `AppContent` |
 | `ModalGerenciarLimite.js` | Definição do limite mensal: mês (Picker 0-based, enviado +1), ano (lista `anos` ou novo ano digitado), valor com máscara. Padrão: `obterIdLimite` → update ou insert; depois chama `loadContas()` | `visible`, `onClose`, `anos`, `loadContas` (prop `onSalvarLimite` recebida mas **não usada**) | `AppContent` |
@@ -748,6 +748,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-06-21 | Padronização de navegação visual | `App.js`, `src/screens/DashboardCartoes.js`, `docs/PROJECT_STRUCTURE.md` |
 | 2026-06-20 | Nova tela Fechamento Mensal (MVP) | `src/screens/FechamentoMensal.js`, `src/hooks/useFechamentoMensal.js`, `src/utils/resumoFinanceiroVencimento.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Metas Financeiras (MVP) | `src/screens/MetasFinanceiras.js`, `src/hooks/useMetasFinanceiras.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Dashboard Financeiro Geral | `src/screens/DashboardFinanceiro.js`, `App.js`, `MenuHeader.js` |

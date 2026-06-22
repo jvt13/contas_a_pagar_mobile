@@ -52,6 +52,20 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-06-21 — Padronização de navegação visual
+
+- **Tipo**: Outro (UX/navegação — sem mudança de rota ou contrato).
+- **Descrição**: Home mantém `MenuHeader` e Central de Controle; telas secundárias acessadas pelo menu usam header nativo do Stack (Voltar + título via `stackScreenOptions` em `App.js`). `DashboardCartoes` deixou de renderizar `MenuHeader` e `ModalConfig`.
+- **Arquivos impactados**:
+  - `App.js` (alterado — `stackScreenOptions`)
+  - `src/screens/DashboardCartoes.js` (alterado — remoção de `MenuHeader`)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: telas secundárias sem menu global; Central de Controle apenas na Home.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §1, §3 (`App.js`), §5 (`DashboardCartoes`), §6 (`MenuHeader`, `ModalConfig`), §14.
+
+---
+
 ### 2026-06-20 — Fechamento Mensal (MVP)
 
 - **Tipo**: Nova tela + Novo hook + Novo util + Nova chave AsyncStorage.
