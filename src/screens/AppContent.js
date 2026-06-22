@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -251,6 +252,8 @@ export default function AppContent() {
   const [alturaDisponivel, setAlturaDisponivel] = useState(400);
 
   const screenHeight = Dimensions.get('window').height;
+  const insets = useSafeAreaInsets();
+  const listBottomPadding = Math.max(insets.bottom + 32, 72);
   const { carregarCartoes } = useCartoes();
   const { contas, totais, anos, loading, loadContas, marcarComoPaga } = useContas(
     ano,
@@ -263,9 +266,9 @@ export default function AppContent() {
 
   useEffect(() => {
     if (posicaoTabelaY > 0) {
-      setAlturaDisponivel(screenHeight - posicaoTabelaY - 90);
+      setAlturaDisponivel(screenHeight - posicaoTabelaY - 90 - insets.bottom);
     }
-  }, [posicaoTabelaY, screenHeight]);
+  }, [posicaoTabelaY, screenHeight, insets.bottom]);
 
   useEffect(() => {
     async function carregarDadosIniciais() {
@@ -371,8 +374,7 @@ export default function AppContent() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.titulo}>Gerenciamento de Contas</Text>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
       <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
 
       <TouchableOpacity
@@ -517,7 +519,7 @@ export default function AppContent() {
               </View>
             }
             showsVerticalScrollIndicator
-            contentContainerStyle={styles.listaContent}
+            contentContainerStyle={[styles.listaContent, { paddingBottom: listBottomPadding }]}
           />
         )}
       </View>
@@ -609,32 +611,15 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 35,
     paddingHorizontal: 12,
-    paddingBottom: 10,
     backgroundColor: '#F4F8FF',
-  },
-  titulo: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 10,
-    letterSpacing: 0.3,
-    backgroundColor: '#1E4DB7',
-    paddingVertical: 11,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    shadowColor: '#16324F',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
   },
   botaoNovaConta: {
     backgroundColor: '#1E8E5A',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 14,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
@@ -653,7 +638,7 @@ const styles = StyleSheet.create({
   filtros: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 10,
   },
   pickerContainer: {
@@ -691,12 +676,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardResumo: {
     width: '48%',
-    minHeight: 108,
-    padding: 14,
+    minHeight: 96,
+    padding: 12,
     borderRadius: 14,
     backgroundColor: '#fff',
     borderWidth: 1,
@@ -708,12 +693,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   cardResumoIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 9,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   tituloResumo: {
     fontSize: 12,
@@ -728,9 +713,9 @@ const styles = StyleSheet.create({
   },
   cardUsoLimite: {
     width: '100%',
-    padding: 14,
+    padding: 12,
     borderRadius: 14,
-    marginVertical: 6,
+    marginVertical: 4,
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: '#E3EBF5',
@@ -743,7 +728,7 @@ const styles = StyleSheet.create({
   cardUsoLimiteHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     gap: 8,
   },
   cardUsoLimiteIconWrap: {
@@ -814,8 +799,8 @@ const styles = StyleSheet.create({
   listaSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 8,
+    marginTop: 10,
+    marginBottom: 6,
     gap: 8,
   },
   listaSectionTitulo: {
@@ -956,7 +941,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   listaContent: {
-    paddingBottom: 16,
     flexGrow: 1,
   },
 });
