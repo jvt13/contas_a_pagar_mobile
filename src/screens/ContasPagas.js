@@ -4,18 +4,69 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
-
 import CustomPicker from '../components/modal/CustomPicker';
 import CategoriaLabel from '../components/categorias/CategoriaLabel';
 import useRelatorioContas from '../hooks/useRelatorioContas';
 import useCategorias from '../hooks/useCategorias';
 import { mesesOptions, formatCurrency } from '../utils/util';
 
+function ResumoCard({ titulo, valor, icon, iconBg, iconColor, accentColor }) {
+  return (
+    <View style={styles.cardResumo}>
+      <View style={[styles.cardResumoIconWrap, { backgroundColor: iconBg }]}>
+        <AppIcon name={icon} size={18} color={iconColor} />
+      </View>
+      <Text style={styles.tituloResumo}>{titulo}</Text>
+      <Text style={[styles.valorResumo, accentColor ? { color: accentColor } : null]}>{valor}</Text>
+    </View>
+  );
+}
+
+function ContaCard({ item, categorias, getSubcategorias, getLabelCartao }) {
+  return (
+    <View style={[styles.contaCard, styles.contaCardPaga]}>
+      <View style={styles.contaCardTop}>
+        <Text style={styles.contaNome} numberOfLines={2}>
+          {item.nome}
+        </Text>
+        <View style={styles.badgePaga}>
+          <Text style={styles.badgePagaTexto}>Paga</Text>
+        </View>
+      </View>
+
+      <Text style={styles.contaValor}>{formatCurrency(item.valor)}</Text>
+
+      <View style={styles.contaMetaRow}>
+        <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
+        <Text style={styles.contaMetaTexto}>Venc. {item.vencimento}</Text>
+      </View>
+
+      <View style={styles.contaMetaRow}>
+        <AppIcon name="card-outline" size={14} color="#0F7B6C" />
+        <Text style={styles.contaMetaTexto} numberOfLines={2}>
+          {getLabelCartao(item.tipo_cartao_id ?? item.tipo_cartao)}
+        </Text>
+      </View>
+
+      <CategoriaLabel
+        categoriaId={item.categoria}
+        subcategoriaId={item.subcategoria}
+        categorias={categorias}
+        subcategorias={getSubcategorias(item.categoria)}
+        textStyle={styles.contaCategoria}
+      />
+    </View>
+  );
+}
+
 export default function ContasPagas() {
+  const insets = useSafeAreaInsets();
+  const listBottomPadding = Math.max(insets.bottom + 32, 72);
+
   const {
     ano,
     setAno,
@@ -25,7 +76,6 @@ export default function ContasPagas() {
     contas,
     limiteMes,
     loading,
-    posicaoTabelaY,
     setPosicaoTabelaY,
     alturaDisponivel,
     getLabelCartao,
@@ -33,11 +83,16 @@ export default function ContasPagas() {
   const { categorias, getSubcategorias } = useCategorias();
 
   const totalPago = contas.reduce((total, item) => total + parseFloat(item.valor || 0), 0);
+  const listHeight = Math.max(alturaDisponivel - insets.bottom, 280);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
       <View style={styles.filtros}>
         <View style={styles.filtroColuna}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Ano</Text>
+          </View>
           <CustomPicker
             selectedValue={ano}
             onValueChange={setAno}
@@ -48,6 +103,10 @@ export default function ContasPagas() {
         </View>
 
         <View style={styles.filtroColuna}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Mês</Text>
+          </View>
           <CustomPicker
             selectedValue={mes}
             onValueChange={setMes}
@@ -59,93 +118,73 @@ export default function ContasPagas() {
       </View>
 
       <View style={styles.cards}>
-        <Resumo titulo="Valor total pago" valor={formatCurrency(totalPago)} cor="#EAF9EF" />
-        <Resumo titulo="Limite do mês" valor={formatCurrency(limiteMes)} cor="#E9F5FF" />
+        <ResumoCard
+          titulo="Total pago"
+          valor={formatCurrency(totalPago)}
+          icon="checkmark-circle-outline"
+          iconBg="#EAF9EF"
+          iconColor="#1E8E5A"
+          accentColor="#1E8E5A"
+        />
+        <ResumoCard
+          titulo="Limite do mês"
+          valor={formatCurrency(limiteMes)}
+          icon="wallet-outline"
+          iconBg="#E9F5FF"
+          iconColor="#1E4DB7"
+        />
+        <ResumoCard
+          titulo="Quantidade"
+          valor={String(contas.length)}
+          icon="list-outline"
+          iconBg="#F1F8EC"
+          iconColor="#4A7C3F"
+        />
+      </View>
+
+      <View style={styles.listaSectionHeader}>
+        <AppIcon name="checkmark-circle-outline" size={18} color="#1E8E5A" />
+        <Text style={styles.listaSectionTitulo}>Contas pagas</Text>
+        {!loading ? <Text style={styles.listaSectionContagem}>{contas.length}</Text> : null}
       </View>
 
       <View
-        style={[styles.tabelaContainer, { height: Math.max(alturaDisponivel, 280) }]}
+        style={[styles.listaContainer, { height: listHeight }]}
         onLayout={(event) => {
           const { y } = event.nativeEvent.layout;
           setPosicaoTabelaY(y);
         }}
       >
-        <ScrollView horizontal>
-          <View style={styles.tableContent}>
-            <View style={styles.cabecalhoLinha}>
-              <Text style={[styles.cabecalho, { width: 140, textAlign: 'left' }]}>Nome</Text>
-              <Text style={[styles.cabecalho, { width: 130 }]}>Cartão</Text>
-              <Text style={[styles.cabecalho, { width: 110 }]}>Categoria</Text>
-              <Text style={[styles.cabecalho, { width: 110 }]}>Vencimento</Text>
-              <Text style={[styles.cabecalho, { width: 110 }]}>Valor</Text>
-            </View>
-
-            {loading ? (
-              <View style={styles.feedbackContainer}>
-                <ActivityIndicator size="large" color="#1E4DB7" />
-                <Text style={styles.feedbackText}>Carregando contas pagas...</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={contas}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={({ item }) => (
-                  <View style={[styles.itemCard, styles.itemCardPago]}>
-                    <View style={styles.itemContent}>
-                      <View style={{ width: 140 }}>
-                        <Text style={styles.cellTitle} numberOfLines={1}>
-                          {item.nome}
-                        </Text>
-                        <CategoriaLabel
-                          categoriaId={item.categoria}
-                          subcategoriaId={item.subcategoria}
-                          categorias={categorias}
-                          subcategorias={getSubcategorias(item.categoria)}
-                          textStyle={styles.cellSubtext}
-                        />
-                      </View>
-                      <Text style={[styles.cell, { width: 130 }]} numberOfLines={2}>
-                        {getLabelCartao(item.tipo_cartao_id ?? item.tipo_cartao)}
-                      </Text>
-                      <CategoriaLabel
-                        categoriaId={item.categoria}
-                        subcategoriaId={item.subcategoria}
-                        categorias={categorias}
-                        subcategorias={getSubcategorias(item.categoria)}
-                        textStyle={styles.cell}
-                        style={{ width: 110 }}
-                      />
-                      <Text style={[styles.cell, { width: 110 }]}>{item.vencimento}</Text>
-                      <Text style={[styles.cell, { width: 110 }]}>
-                        {formatCurrency(item.valor)}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-                ListEmptyComponent={
-                  <View style={styles.feedbackContainer}>
-                    <AppIcon name="checkCircle" size={24} color="#7B8BA3" />
-                    <Text style={styles.feedbackText}>
-                      Nenhuma conta paga encontrada para esse período.
-                    </Text>
-                  </View>
-                }
-                showsVerticalScrollIndicator
-                contentContainerStyle={styles.listContent}
+        {loading ? (
+          <View style={styles.feedbackContainer}>
+            <ActivityIndicator size="large" color="#1E4DB7" />
+            <Text style={styles.feedbackText}>Carregando contas pagas...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={contas}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={({ item }) => (
+              <ContaCard
+                item={item}
+                categorias={categorias}
+                getSubcategorias={getSubcategorias}
+                getLabelCartao={getLabelCartao}
               />
             )}
-          </View>
-        </ScrollView>
+            ListEmptyComponent={
+              <View style={styles.feedbackContainer}>
+                <AppIcon name="checkCircle" size={24} color="#7B8BA3" />
+                <Text style={styles.feedbackText}>
+                  Nenhuma conta paga encontrada para esse período.
+                </Text>
+              </View>
+            }
+            showsVerticalScrollIndicator
+            contentContainerStyle={[styles.listContent, { paddingBottom: listBottomPadding }]}
+          />
+        )}
       </View>
-    </View>
-  );
-}
-
-function Resumo({ titulo, valor, cor }) {
-  return (
-    <View style={[styles.cardResumo, { backgroundColor: cor }]}>
-      <Text style={styles.tituloResumo}>{titulo}</Text>
-      <Text style={styles.valorResumo}>{valor}</Text>
     </View>
   );
 }
@@ -153,119 +192,205 @@ function Resumo({ titulo, valor, cor }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     backgroundColor: '#F4F8FF',
   },
   filtros: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
+    gap: 10,
   },
   filtroColuna: {
     flex: 1,
   },
+  pickerLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 5,
+    paddingLeft: 2,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5D6F86',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   picker: {
-    minWidth: 120,
-    height: 50,
-    marginHorizontal: 5,
-    borderRadius: 10,
-    justifyContent: 'center',
+    width: '100%',
+    height: 46,
     backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   cards: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginVertical: 6,
+    gap: 8,
+    marginBottom: 4,
   },
   cardResumo: {
-    width: '48%',
-    padding: 16,
+    width: '31%',
+    minWidth: 100,
+    flexGrow: 1,
+    minHeight: 96,
+    padding: 12,
     borderRadius: 14,
-    marginVertical: 5,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
     elevation: 3,
-    shadowColor: '#17305C',
+    shadowColor: '#16324F',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  tituloResumo: {
-    fontSize: 13,
-    color: '#5D6F86',
+  cardResumoIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 6,
   },
+  tituloResumo: {
+    fontSize: 11,
+    color: '#6B7A90',
+    marginBottom: 4,
+    fontWeight: '600',
+  },
   valorResumo: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '800',
     color: '#16324F',
   },
-  tabelaContainer: {
-    marginTop: 18,
+  listaSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 8,
+    gap: 8,
+  },
+  listaSectionTitulo: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#16324F',
+  },
+  listaSectionContagem: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E8E5A',
+    backgroundColor: '#EAF9EF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  listaContainer: {
     borderWidth: 1,
-    borderColor: '#D9E4F2',
+    borderColor: '#E3EBF5',
     borderRadius: 14,
     overflow: 'hidden',
+    backgroundColor: '#F8FAFD',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+  },
+  contaCard: {
+    marginHorizontal: 10,
+    marginTop: 10,
+    marginBottom: 2,
+    padding: 14,
+    borderRadius: 14,
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
-  tableContent: {
-    minWidth: 600,
-    maxWidth: 1000,
+  contaCardPaga: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#1E8E5A',
   },
-  cabecalhoLinha: {
+  contaCardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EDF4FF',
-    paddingHorizontal: 12,
-    paddingVertical: 14,
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 8,
   },
-  cabecalho: {
-    fontWeight: '800',
-    fontSize: 13,
-    color: '#33415C',
-    textAlign: 'center',
-  },
-  itemCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF1F7',
-  },
-  itemCardPago: {
-    backgroundColor: '#F2FBF5',
-  },
-  itemContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cell: {
-    fontSize: 13,
-    color: '#33415C',
-    textAlign: 'center',
-  },
-  cellTitle: {
-    fontSize: 14,
+  contaNome: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#1B263B',
+    color: '#16324F',
+    lineHeight: 20,
   },
-  cellSubtext: {
+  badgePaga: {
+    backgroundColor: '#EAF9EF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgePagaTexto: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1E8E5A',
+  },
+  contaValor: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#16324F',
+    marginBottom: 10,
+  },
+  contaMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  contaMetaTexto: {
+    flex: 1,
+    fontSize: 13,
+    color: '#33415C',
+    fontWeight: '500',
+  },
+  contaCategoria: {
     fontSize: 12,
     color: '#6B7A90',
     marginTop: 2,
   },
   feedbackContainer: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 48,
     paddingHorizontal: 24,
+    gap: 10,
   },
   feedbackText: {
     color: '#607086',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 10,
   },
   listContent: {
     flexGrow: 1,
-    paddingBottom: 16,
+    paddingBottom: 4,
   },
 });
