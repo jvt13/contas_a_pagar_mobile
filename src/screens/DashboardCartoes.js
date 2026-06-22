@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,10 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import MenuHeader from '../components/MenuHeader';
-import ModalConfig from '../components/modal/ModalConfig';
 import CartaoDashboardCard from '../components/dashboard/CartaoDashboardCard';
 import useDashboardCartoes from '../hooks/useDashboardCartoes';
 
 export default function DashboardCartoes() {
-  const [modalConfigVisible, setModalConfigVisible] = useState(false);
   const { resumos, loading, erro, carregar } = useDashboardCartoes();
 
   useFocusEffect(
@@ -26,7 +24,7 @@ export default function DashboardCartoes() {
 
   return (
     <View style={styles.container}>
-      <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
+      <MenuHeader />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -65,8 +63,6 @@ export default function DashboardCartoes() {
           <CartaoDashboardCard key={String(resumo.id)} resumo={resumo} />
         ))}
       </ScrollView>
-
-      <ModalConfig visible={modalConfigVisible} onClose={() => setModalConfigVisible(false)} />
     </View>
   );
 }

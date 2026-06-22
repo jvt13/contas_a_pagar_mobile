@@ -46,6 +46,9 @@ export default function MenuHeader({ onOpenConfig }) {
   }
 
   const handleOpenModal = () => {
+    if (typeof onOpenConfig !== 'function') {
+      return;
+    }
     closeMenu();
     onOpenConfig();
   };
@@ -88,26 +91,26 @@ export default function MenuHeader({ onOpenConfig }) {
   }, [menuOpen]);
 
 
+  const inicial = userName ? userName.charAt(0).toUpperCase() : 'U';
+
   return (
     <View style={styles.headerContainer}>
-      {/* Botão do menu hamburguer */}
-      <TouchableOpacity onPress={toggleMenu} style={styles.menuButton}>
+      <TouchableOpacity onPress={toggleMenu} style={styles.menuButton} activeOpacity={0.75}>
         <Ionicons
           name={menuOpen ? 'close' : 'menu'}
-          size={28}
-          color="#fff"
+          size={22}
+          color="#1E4DB7"
         />
       </TouchableOpacity>
 
-      {/* Avatar e nome do usuário */}
       <View style={styles.userContainer}>
-        {/*<View style={[styles.avatar, { backgroundColor: getAvatarColor(userName.charAt(0)) }]}> */}
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {userName ? userName.charAt(0).toUpperCase() : 'U'}
-          </Text>
+        <View style={[styles.avatar, { backgroundColor: getAvatarColor(inicial) }]}>
+          <Text style={styles.avatarText}>{inicial}</Text>
         </View>
-        <Text style={styles.userName}>Olá, {userName} 👋</Text>
+        <View style={styles.userTextWrap}>
+          <Text style={styles.userGreeting}>Olá,</Text>
+          <Text style={styles.userName} numberOfLines={1}>{userName}</Text>
+        </View>
       </View>
 
       {/* Menu drop-down */}
@@ -128,7 +131,9 @@ export default function MenuHeader({ onOpenConfig }) {
             <MenuItem text="Fechamento Mensal" onPress={() => handleNavigation('FechamentoMensal')} icon="calendar-outline" />
             <MenuItem text="Contas Pagas" onPress={() => handleNavigation('ContasPagas')} icon="checkmark-done-outline" />
             <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} icon="time-outline" />
-            <MenuItem text="Central de Controle" onPress={handleOpenModal} icon="settings-outline" />
+            {typeof onOpenConfig === 'function' ? (
+              <MenuItem text="Central de Controle" onPress={handleOpenModal} icon="settings-outline" />
+            ) : null}
             <MenuItem text="Sair" onPress={logout} icon="log-out-outline" />
           </Animated.View>
         </Pressable>
@@ -148,68 +153,96 @@ const MenuItem = ({ text, onPress, icon }) => (
 const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
-    backgroundColor: '#3b5998', // tom de azul suave
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    marginBottom: 10,
+    elevation: 3,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     zIndex: 10,
   },
   menuButton: {
-    padding: 5,
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#E9F5FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   userContainer: {
-    flexDirection: 'column',
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
+    minWidth: 0,
   },
   avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff', // cor de fundo do avatar
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginRight: 10,
   },
   avatarText: {
-    color: '#3b5998',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  userTextWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  userGreeting: {
+    fontSize: 12,
+    color: '#6B7A90',
+    marginBottom: 1,
   },
   userName: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 15,
+    color: '#16324F',
+    fontWeight: '700',
   },
   dropdownContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(22, 50, 79, 0.35)',
     justifyContent: 'flex-start',
     alignItems: 'flex-start',
   },
   dropdownMenu: {
-    backgroundColor: '#f0f8ff', // Azul clarinho harmonizado com o header
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    marginTop: 128,
+    backgroundColor: '#F8FAFD',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 118,
     marginLeft: 10,
-    borderBottomEndRadius: 10,
-    borderBottomStartRadius: 10,
-    //borderRadius: 10,
-    elevation: 5,
-    width: 250,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 8,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    width: 260,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
+    borderBottomColor: '#E3EBF5',
   },
   menuText: {
-    fontSize: 16,
-    color: '#333',
+    fontSize: 15,
+    color: '#16324F',
+    fontWeight: '500',
   },
 });

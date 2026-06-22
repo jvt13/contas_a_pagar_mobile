@@ -67,6 +67,10 @@ export default function ModalConfig({
     abrirModalContrlOrga,
   };
 
+  const opcoesDisponiveis = OPCOES.filter(
+    (opcao) => typeof handlers[opcao.onPressKey] === 'function'
+  );
+
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -85,19 +89,26 @@ export default function ModalConfig({
 
           <View style={styles.divisor} />
 
-          <View style={styles.opcoesLista}>
-            {OPCOES.map((opcao) => (
-              <OpcaoCard
-                key={opcao.key}
-                titulo={opcao.titulo}
-                descricao={opcao.descricao}
-                icon={opcao.icon}
-                iconBg={opcao.iconBg}
-                iconColor={opcao.iconColor}
-                onPress={() => handlers[opcao.onPressKey]?.()}
-              />
-            ))}
-          </View>
+          {opcoesDisponiveis.length > 0 ? (
+            <View style={styles.opcoesLista}>
+              {opcoesDisponiveis.map((opcao) => (
+                <OpcaoCard
+                  key={opcao.key}
+                  titulo={opcao.titulo}
+                  descricao={opcao.descricao}
+                  icon={opcao.icon}
+                  iconBg={opcao.iconBg}
+                  iconColor={opcao.iconColor}
+                  onPress={() => handlers[opcao.onPressKey]()}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.semOpcoesWrap}>
+              <AppIcon name="information-circle-outline" size={24} color="#8CA0B3" />
+              <Text style={styles.semOpcoesTexto}>Nenhuma ação disponível nesta tela.</Text>
+            </View>
+          )}
         </View>
       </View>
     </Modal>
@@ -202,5 +213,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     color: '#6B7A90',
+  },
+  semOpcoesWrap: {
+    alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 12,
+    gap: 10,
+  },
+  semOpcoesTexto: {
+    fontSize: 14,
+    color: '#6B7A90',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
