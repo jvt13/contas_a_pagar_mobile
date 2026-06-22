@@ -8,7 +8,9 @@ import {
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AppIcon from '../components/AppIcon';
 import CustomPicker from '../components/modal/CustomPicker';
 import CategoriaLabel from '../components/categorias/CategoriaLabel';
 import useCategorias from '../hooks/useCategorias';
@@ -27,9 +29,9 @@ import {
 
 const SEM_CATEGORIA = '__sem_categoria__';
 const FORMAS_DESPESA = [
-  { chave: 'credito', rotulo: 'Crédito' },
-  { chave: 'debito', rotulo: 'Débito' },
-  { chave: 'dinheiro', rotulo: 'Dinheiro' },
+  { chave: 'credito', rotulo: 'Crédito', cor: '#1E4DB7', iconBg: '#E9F5FF', icon: 'card-outline' },
+  { chave: 'debito', rotulo: 'Débito', cor: '#0F7B6C', iconBg: '#EAF9EF', icon: 'card-outline' },
+  { chave: 'dinheiro', rotulo: 'Dinheiro', cor: '#C47A1A', iconBg: '#FFF3E8', icon: 'cash-outline' },
 ];
 
 function calcularPercentual(parte, total) {
@@ -140,9 +142,12 @@ function montarDashboardFinanceiro(contas, limiteMes, mapaCartoes, resumosCartoe
   const temLimite = limiteMensal > 0;
   const percentualLimite = temLimite ? calcularPercentual(despesas, limiteMensal) : null;
 
-  const composicaoLista = FORMAS_DESPESA.map(({ chave, rotulo }) => ({
+  const composicaoLista = FORMAS_DESPESA.map(({ chave, rotulo, cor, iconBg, icon }) => ({
     chave,
     rotulo,
+    cor,
+    iconBg,
+    icon,
     valor: composicao[chave],
     percentual: calcularPercentual(composicao[chave], despesas),
   }));
@@ -195,33 +200,141 @@ function montarDashboardFinanceiro(contas, limiteMes, mapaCartoes, resumosCartoe
   };
 }
 
-function ResumoCard({ titulo, valor, cor, subtitulo }) {
+function ResumoCard({ titulo, valor, subtitulo, icon, iconBg, iconColor, accentColor }) {
   return (
-    <View style={[styles.cardResumo, { backgroundColor: cor }]}>
+    <View style={styles.cardResumo}>
+      <View style={[styles.cardResumoIconWrap, { backgroundColor: iconBg }]}>
+        <AppIcon name={icon} size={18} color={iconColor} />
+      </View>
       <Text style={styles.tituloResumo}>{titulo}</Text>
-      <Text style={styles.valorResumo}>{valor}</Text>
+      <Text style={[styles.valorResumo, accentColor ? { color: accentColor } : null]}>{valor}</Text>
       {subtitulo ? <Text style={styles.subtituloResumo}>{subtitulo}</Text> : null}
     </View>
   );
 }
 
-function SecaoTitulo({ titulo }) {
-  return <Text style={styles.secaoTitulo}>{titulo}</Text>;
+function SecaoHeader({ titulo, icon, iconColor = '#1E4DB7' }) {
+  return (
+    <View style={styles.secaoHeader}>
+      <AppIcon name={icon} size={18} color={iconColor} />
+      <Text style={styles.secaoTitulo}>{titulo}</Text>
+    </View>
+  );
 }
 
-function LinhaIndicador({ rotulo, valor, detalhe }) {
+function UsoLimiteResumo({ percentual, temLimite, estouro }) {
+  if (!temLimite) {
+    return null;
+  }
+
+  const percentualReal = Number(percentual) || 0;
+  const pctBarra = Math.min(100, Math.max(0, percentualReal));
+  const cor = percentualReal > 100 ? '#D64545' : percentualReal > 80 ? '#E6A817' : '#1E8E5A';
+
   return (
-    <View style={styles.linhaIndicador}>
-      <View style={styles.linhaIndicadorTexto}>
+    <View style={styles.usoLimiteCard}>
+      <View style={styles.usoLimiteHeader}>
+        <AppIcon name="speedometer-outline" size={16} color="#1E4DB7" />
+        <Text style={styles.usoLimiteTitulo}>Uso do orçamento mensal</Text>
+        <Text style={[styles.usoLimitePct, { color: cor }]}>{Math.round(percentualReal)}%</Text>
+      </View>
+      <View style={styles.barraTrack}>
+        <View style={[styles.barraFill, { width: `${pctBarra}%`, backgroundColor: cor }]} />
+      </View>
+      {estouro ? (
+        <Text style={styles.usoLimiteEstouro}>Orçamento estourado no período</Text>
+      ) : null}
+    </View>
+  );
+}
+
+function ComposicaoItem({ rotulo, valor, percentual, cor, iconBg, icon }) {
+  const larguraBarra = Math.min(100, Math.max(0, Number(percentual) || 0));
+
+  return (
+    <View style={styles.composicaoItem}>
+      <View style={styles.composicaoHeader}>
+        <View style={styles.composicaoLabelRow}>
+          <View style={[styles.composicaoIconWrap, { backgroundColor: iconBg }]}>
+            <AppIcon name={icon} size={16} color={cor} />
+          </View>
+          <View>
+            <Text style={styles.composicaoRotulo}>{rotulo}</Text>
+            <Text style={styles.composicaoPercentual}>{formatarPercentual(percentual)}</Text>
+          </View>
+        </View>
+        <Text style={[styles.composicaoValor, { color: cor }]}>{formatCurrency(valor)}</Text>
+      </View>
+      <View style={styles.barraTrack}>
+        <View style={[styles.barraFill, { width: `${larguraBarra}%`, backgroundColor: cor }]} />
+      </View>
+    </View>
+  );
+}
+
+function CategoriaRankItem({ item, index, categorias }) {
+  const larguraBarra = Math.min(100, Math.max(0, Number(item.percentual) || 0));
+
+  return (
+    <View style={styles.categoriaItem}>
+      <View style={styles.categoriaTop}>
+        <View style={styles.categoriaRankBadge}>
+          <Text style={styles.categoriaRankTexto}>{index + 1}º</Text>
+        </View>
+        <View style={styles.categoriaInfo}>
+          {item.categoriaId === SEM_CATEGORIA ? (
+            <Text style={styles.categoriaNome}>Sem categoria</Text>
+          ) : (
+            <CategoriaLabel
+              categoriaId={item.categoriaId}
+              categorias={categorias}
+              textStyle={styles.categoriaNome}
+            />
+          )}
+          <Text style={styles.categoriaQuantidade}>
+            {item.quantidade} lançamento{item.quantidade === 1 ? '' : 's'}
+          </Text>
+        </View>
+        <View style={styles.categoriaValores}>
+          <Text style={styles.categoriaTotal}>{formatCurrency(item.total)}</Text>
+          <Text style={styles.categoriaPercentual}>{formatarPercentual(item.percentual)}</Text>
+        </View>
+      </View>
+      <View style={styles.barraTrack}>
+        <View style={[styles.barraFill, { width: `${larguraBarra}%`, backgroundColor: '#1E4DB7' }]} />
+      </View>
+    </View>
+  );
+}
+
+function IndicadorItem({ icon, iconBg, iconColor, rotulo, valor, detalhe, valorColor }) {
+  return (
+    <View style={styles.indicadorItem}>
+      <View style={[styles.indicadorIconWrap, { backgroundColor: iconBg }]}>
+        <AppIcon name={icon} size={18} color={iconColor} />
+      </View>
+      <View style={styles.indicadorTexto}>
         <Text style={styles.linhaRotulo}>{rotulo}</Text>
         {detalhe ? <Text style={styles.linhaDetalhe}>{detalhe}</Text> : null}
       </View>
-      <Text style={styles.linhaValor}>{valor}</Text>
+      <Text style={[styles.linhaValor, valorColor ? { color: valorColor } : null]}>{valor}</Text>
+    </View>
+  );
+}
+
+function EstadoVazio({ icon, texto }) {
+  return (
+    <View style={styles.vazioWrap}>
+      <AppIcon name={icon} size={22} color="#8CA0B3" />
+      <Text style={styles.vazioTexto}>{texto}</Text>
     </View>
   );
 }
 
 export default function DashboardFinanceiro() {
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = Math.max(insets.bottom + 32, 72);
+
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear().toString());
   const [mes, setMes] = useState(hoje.getMonth().toString());
@@ -302,20 +415,31 @@ export default function DashboardFinanceiro() {
         valor: dashboard.temLimite
           ? formatCurrency(dashboard.limiteMensal)
           : 'Sem limite definido',
-        cor: '#E9F5FF',
+        icon: 'wallet-outline',
+        iconBg: '#E9F5FF',
+        iconColor: '#1E4DB7',
         subtitulo: dashboard.temLimite ? 'Orçamento do mês' : 'Defina na Central de Controle',
       },
       {
         titulo: 'Despesas',
         valor: formatCurrency(dashboard.despesas),
-        cor: '#FFF3E8',
+        icon: 'stats-chart-outline',
+        iconBg: '#FFF3E8',
+        iconColor: '#C47A1A',
+        accentColor: '#C47A1A',
         subtitulo: 'Vencimento no período',
       },
       {
-        titulo: 'Disponível',
+        titulo:
+          dashboard.temLimite && dashboard.disponivel < 0 ? 'Estouro' : 'Disponível',
         valor: dashboard.temLimite ? formatCurrency(dashboard.disponivel) : '—',
-        cor:
-          dashboard.temLimite && dashboard.disponivel < 0 ? '#FDECEC' : '#EAF9EF',
+        icon:
+          dashboard.temLimite && dashboard.disponivel < 0
+            ? 'warning-outline'
+            : 'checkmark-circle-outline',
+        iconBg: dashboard.temLimite && dashboard.disponivel < 0 ? '#FDECEC' : '#EAF9EF',
+        iconColor: dashboard.temLimite && dashboard.disponivel < 0 ? '#D64545' : '#1E8E5A',
+        accentColor: dashboard.temLimite && dashboard.disponivel < 0 ? '#D64545' : '#1E8E5A',
         subtitulo: dashboard.temLimite
           ? dashboard.disponivel < 0
             ? 'Orçamento estourado'
@@ -348,9 +472,13 @@ export default function DashboardFinanceiro() {
   }, [dashboard.cartoesResumo]);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
       <View style={styles.filtros}>
         <View style={styles.filtroColuna}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Ano</Text>
+          </View>
           <CustomPicker
             selectedValue={ano}
             onValueChange={setAno}
@@ -360,6 +488,10 @@ export default function DashboardFinanceiro() {
           />
         </View>
         <View style={styles.filtroColuna}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Mês</Text>
+          </View>
           <CustomPicker
             selectedValue={mes}
             onValueChange={setMes}
@@ -376,79 +508,86 @@ export default function DashboardFinanceiro() {
           <Text style={styles.feedbackText}>Carregando dashboard...</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator>
-          <SecaoTitulo>Resumo financeiro</SecaoTitulo>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: scrollBottomPadding }]}
+          showsVerticalScrollIndicator
+        >
+          <SecaoHeader titulo="Resumo financeiro" icon="wallet-outline" />
           <View style={styles.cards}>
             {resumoFinanceiro.map((card) => (
               <ResumoCard key={card.titulo} {...card} />
             ))}
           </View>
 
-          <SecaoTitulo>Composição das despesas</SecaoTitulo>
+          <UsoLimiteResumo
+            percentual={dashboard.percentualLimite}
+            temLimite={dashboard.temLimite}
+            estouro={dashboard.temLimite && dashboard.disponivel < 0}
+          />
+
+          <SecaoHeader titulo="Composição das despesas" icon="pie-chart-outline" />
           <View style={styles.blocoCard}>
             {dashboard.despesas <= 0 ? (
-              <Text style={styles.vazioTexto}>Nenhuma despesa no período.</Text>
+              <EstadoVazio icon="inbox" texto="Nenhuma despesa no período." />
             ) : (
               dashboard.composicaoLista.map((item) => (
-                <View key={item.chave} style={styles.linhaComposicao}>
-                  <View>
-                    <Text style={styles.composicaoRotulo}>{item.rotulo}</Text>
-                    <Text style={styles.composicaoPercentual}>
-                      {formatarPercentual(item.percentual)} das despesas
-                    </Text>
-                  </View>
-                  <Text style={styles.composicaoValor}>{formatCurrency(item.valor)}</Text>
-                </View>
+                <ComposicaoItem
+                  key={item.chave}
+                  rotulo={item.rotulo}
+                  valor={item.valor}
+                  percentual={item.percentual}
+                  cor={item.cor}
+                  iconBg={item.iconBg}
+                  icon={item.icon}
+                />
               ))
             )}
           </View>
 
-          <SecaoTitulo>Top 5 categorias</SecaoTitulo>
+          <SecaoHeader titulo="Top 5 categorias" icon="flag-outline" />
           <View style={styles.blocoCard}>
             {dashboard.topCategorias.length === 0 ? (
-              <Text style={styles.vazioTexto}>Nenhuma categoria no período.</Text>
+              <EstadoVazio icon="file-tray-outline" texto="Nenhuma categoria no período." />
             ) : (
               dashboard.topCategorias.map((item, index) => (
-                <View key={item.categoriaId} style={styles.linhaCategoria}>
-                  <View style={styles.categoriaInfo}>
-                    <Text style={styles.categoriaRank}>{index + 1}º</Text>
-                    {item.categoriaId === SEM_CATEGORIA ? (
-                      <Text style={styles.categoriaNome}>Sem categoria</Text>
-                    ) : (
-                      <CategoriaLabel
-                        categoriaId={item.categoriaId}
-                        categorias={categorias}
-                        textStyle={styles.categoriaNome}
-                      />
-                    )}
-                    <Text style={styles.categoriaQuantidade}>
-                      {item.quantidade} lançamento{item.quantidade === 1 ? '' : 's'}
-                    </Text>
-                  </View>
-                  <View style={styles.categoriaValores}>
-                    <Text style={styles.categoriaTotal}>{formatCurrency(item.total)}</Text>
-                    <Text style={styles.categoriaPercentual}>
-                      {formatarPercentual(item.percentual)}
-                    </Text>
-                  </View>
-                </View>
+                <CategoriaRankItem
+                  key={item.categoriaId}
+                  item={item}
+                  index={index}
+                  categorias={categorias}
+                />
               ))
             )}
           </View>
 
-          <SecaoTitulo>Indicadores rápidos</SecaoTitulo>
+          <SecaoHeader titulo="Indicadores rápidos" icon="speedometer-outline" />
           <View style={styles.blocoCard}>
-            <LinhaIndicador
+            <IndicadorItem
+              icon="checkmark-circle-outline"
+              iconBg="#EAF9EF"
+              iconColor="#1E8E5A"
               rotulo="Contas pagas"
               valor={formatCurrency(dashboard.totalPago)}
-              detalhe={`${dashboard.qtdPagas} conta(s)`}
+              detalhe={`${dashboard.qtdPagas} conta(s) · ${formatarPercentual(
+                calcularPercentual(dashboard.totalPago, dashboard.despesas)
+              )} do total`}
+              valorColor="#1E8E5A"
             />
-            <LinhaIndicador
+            <IndicadorItem
+              icon="time-outline"
+              iconBg="#FFF3E8"
+              iconColor="#C47A1A"
               rotulo="Contas pendentes"
               valor={formatCurrency(dashboard.totalPendente)}
-              detalhe={`${dashboard.qtdPendentes} conta(s)`}
+              detalhe={`${dashboard.qtdPendentes} conta(s) · ${formatarPercentual(
+                calcularPercentual(dashboard.totalPendente, dashboard.despesas)
+              )} do total`}
+              valorColor="#C47A1A"
             />
-            <LinhaIndicador
+            <IndicadorItem
+              icon="speedometer-outline"
+              iconBg="#E9F5FF"
+              iconColor="#1E4DB7"
               rotulo="Uso do limite do mês"
               valor={
                 dashboard.temLimite
@@ -462,8 +601,16 @@ export default function DashboardFinanceiro() {
                     : `Restante: ${formatCurrency(dashboard.disponivel)}`
                   : 'Defina na Central de Controle'
               }
+              valorColor={
+                dashboard.temLimite && (dashboard.percentualLimite || 0) > 100
+                  ? '#D64545'
+                  : '#1E4DB7'
+              }
             />
-            <LinhaIndicador
+            <IndicadorItem
+              icon="card-outline"
+              iconBg="#F3EEFF"
+              iconColor="#6B4FA3"
               rotulo="Utilização dos cartões"
               valor={
                 dashboard.cartoesResumo.mediaUtilizacao != null
@@ -482,50 +629,95 @@ export default function DashboardFinanceiro() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     backgroundColor: '#F4F8FF',
   },
   filtros: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 10,
+    gap: 10,
   },
   filtroColuna: {
-    width: '48%',
+    flex: 1,
+  },
+  pickerLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 5,
+    paddingLeft: 2,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5D6F86',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   picker: {
     width: '100%',
-    height: 50,
+    height: 46,
     backgroundColor: '#fff',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingTop: 4,
+  },
+  secaoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 12,
   },
   secaoTitulo: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#16324F',
-    marginBottom: 8,
-    marginTop: 4,
   },
   cards: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
   },
   cardResumo: {
     width: '48%',
-    padding: 14,
+    minHeight: 96,
+    padding: 12,
     borderRadius: 14,
-    marginVertical: 4,
-    elevation: 2,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 3,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  cardResumoIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
   },
   tituloResumo: {
-    fontSize: 12,
-    color: '#5D6F86',
-    marginBottom: 6,
+    fontSize: 11,
+    color: '#6B7A90',
+    marginBottom: 4,
+    fontWeight: '600',
   },
   valorResumo: {
     fontSize: 16,
@@ -536,27 +728,96 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontSize: 11,
     color: '#6B7A90',
+    lineHeight: 15,
+  },
+  usoLimiteCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    padding: 12,
+    marginBottom: 4,
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  usoLimiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  usoLimiteTitulo: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#16324F',
+  },
+  usoLimitePct: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  usoLimiteEstouro: {
+    marginTop: 6,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#D64545',
+  },
+  barraTrack: {
+    height: 8,
+    backgroundColor: '#EEF3F9',
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  barraFill: {
+    height: '100%',
+    borderRadius: 8,
+    minWidth: 4,
   },
   blocoCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D9E4F2',
-    padding: 14,
-    marginBottom: 14,
+    borderColor: '#E3EBF5',
+    padding: 12,
+    marginBottom: 8,
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
-  linhaComposicao: {
+  composicaoItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF3F9',
+  },
+  composicaoHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EDF1F7',
+    marginBottom: 8,
+  },
+  composicaoLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    paddingRight: 8,
+  },
+  composicaoIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   composicaoRotulo: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#33415C',
+    color: '#16324F',
   },
   composicaoPercentual: {
     marginTop: 2,
@@ -566,25 +827,34 @@ const styles = StyleSheet.create({
   composicaoValor: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#1E4DB7',
   },
-  linhaCategoria: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+  categoriaItem: {
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDF1F7',
+    borderBottomColor: '#EEF3F9',
+  },
+  categoriaTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  categoriaRankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#E9F5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  categoriaRankTexto: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E4DB7',
   },
   categoriaInfo: {
     flex: 1,
-    paddingRight: 10,
-  },
-  categoriaRank: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8CA0B3',
-    marginBottom: 2,
+    paddingRight: 8,
   },
   categoriaNome: {
     fontSize: 14,
@@ -610,17 +880,24 @@ const styles = StyleSheet.create({
     color: '#0F7B6C',
     fontWeight: '600',
   },
-  linhaIndicador: {
+  indicadorItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDF1F7',
+    borderBottomColor: '#EEF3F9',
+    gap: 10,
   },
-  linhaIndicadorTexto: {
+  indicadorIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicadorTexto: {
     flex: 1,
-    paddingRight: 10,
+    paddingRight: 8,
   },
   linhaRotulo: {
     fontSize: 14,
@@ -631,17 +908,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: '#6B7A90',
+    lineHeight: 16,
   },
   linhaValor: {
     fontSize: 15,
     fontWeight: '800',
     color: '#16324F',
   },
+  vazioWrap: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
   vazioTexto: {
     fontSize: 13,
     color: '#607086',
     textAlign: 'center',
-    paddingVertical: 8,
   },
   feedbackContainer: {
     flex: 1,
@@ -654,6 +936,5 @@ const styles = StyleSheet.create({
     color: '#607086',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 8,
   },
 });
