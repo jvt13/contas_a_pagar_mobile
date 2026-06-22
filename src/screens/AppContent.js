@@ -66,7 +66,12 @@ function UsoLimiteCard({ totais, contas }) {
 
   return (
     <View style={styles.cardUsoLimite}>
-      <Text style={styles.tituloUsoLimite}>Uso do limite do mês</Text>
+      <View style={styles.cardUsoLimiteHeader}>
+        <View style={styles.cardUsoLimiteIconWrap}>
+          <AppIcon name="speedometer-outline" size={18} color="#1E4DB7" />
+        </View>
+        <Text style={styles.tituloUsoLimite}>Uso do limite do mês</Text>
+      </View>
 
       {temLimite ? (
         <>
@@ -80,7 +85,7 @@ function UsoLimiteCard({ totais, contas }) {
           </View>
           <View style={styles.linhaUsoLimite}>
             <Text style={[styles.percentualUsoLimite, { color: corUso }]}>
-              {Math.round(percentualReal)}%
+              {Math.round(percentualReal)}% utilizado
             </Text>
             <Text
               style={[
@@ -90,16 +95,31 @@ function UsoLimiteCard({ totais, contas }) {
             >
               {saldo < 0
                 ? `Estouro de ${formatCurrency(Math.abs(saldo))}`
-                : `Saldo restante: ${formatCurrency(saldo)}`}
+                : `Saldo: ${formatCurrency(saldo)}`}
             </Text>
           </View>
         </>
       ) : (
-        <>
-          <Text style={styles.semLimiteTexto}>Sem limite definido</Text>
-          <Text style={styles.semLimiteDica}>Defina seu limite na Central de Controle</Text>
-        </>
+        <View style={styles.semLimiteWrap}>
+          <AppIcon name="information-circle-outline" size={20} color="#8CA0B3" />
+          <View style={styles.semLimiteTextos}>
+            <Text style={styles.semLimiteTexto}>Sem limite definido</Text>
+            <Text style={styles.semLimiteDica}>Defina na Central de Controle</Text>
+          </View>
+        </View>
       )}
+    </View>
+  );
+}
+
+function ResumoCard({ titulo, valor, icon, iconBg, iconColor, accentColor }) {
+  return (
+    <View style={styles.cardResumo}>
+      <View style={[styles.cardResumoIconWrap, { backgroundColor: iconBg }]}>
+        <AppIcon name={icon} size={18} color={iconColor} />
+      </View>
+      <Text style={styles.tituloResumo}>{titulo}</Text>
+      <Text style={[styles.valorResumo, accentColor ? { color: accentColor } : null]}>{valor}</Text>
     </View>
   );
 }
@@ -267,10 +287,36 @@ export default function AppContent() {
 
   const cardsResumo = useMemo(
     () => [
-      { titulo: 'Limite do mês', valor: formatCurrency(totais.total_limite), cor: '#E9F5FF' },
-      { titulo: 'Total de contas', valor: String(totais.total_contas || 0), cor: '#F1F8EC' },
-      { titulo: 'Contas pagas', valor: String(totais.total_contas_pagas || 0), cor: '#EAF9EF' },
-      { titulo: 'Pendentes', valor: String(totais.total_contas_pendentes || 0), cor: '#FFF3E8' },
+      {
+        titulo: 'Limite do mês',
+        valor: formatCurrency(totais.total_limite),
+        icon: 'wallet-outline',
+        iconBg: '#E9F5FF',
+        iconColor: '#1E4DB7',
+      },
+      {
+        titulo: 'Total de contas',
+        valor: String(totais.total_contas || 0),
+        icon: 'list-outline',
+        iconBg: '#F1F8EC',
+        iconColor: '#4A7C3F',
+      },
+      {
+        titulo: 'Contas pagas',
+        valor: String(totais.total_contas_pagas || 0),
+        icon: 'checkmark-circle-outline',
+        iconBg: '#EAF9EF',
+        iconColor: '#1E8E5A',
+        accentColor: '#1E8E5A',
+      },
+      {
+        titulo: 'Pendentes',
+        valor: String(totais.total_contas_pendentes || 0),
+        icon: 'time-outline',
+        iconBg: '#FFF3E8',
+        iconColor: '#C47A1A',
+        accentColor: '#C47A1A',
+      },
     ],
     [totais]
   );
@@ -331,17 +377,22 @@ export default function AppContent() {
 
       <TouchableOpacity
         style={styles.botaoNovaConta}
+        activeOpacity={0.85}
         onPress={() => {
           setContaSelecionada(null);
           setModalNovaContaVisible(true);
         }}
       >
-        <AppIcon name="plus" size={16} color="#fff" />
-        <Text style={styles.textoBotao}> Nova conta</Text>
+        <AppIcon name="plus" size={18} color="#fff" />
+        <Text style={styles.textoBotao}>Nova conta</Text>
       </TouchableOpacity>
 
       <View style={styles.filtros}>
         <View style={styles.pickerContainer}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Ano</Text>
+          </View>
           <CustomPicker
             selectedValue={ano}
             onValueChange={setAno}
@@ -352,6 +403,10 @@ export default function AppContent() {
         </View>
 
         <View style={styles.pickerContainer}>
+          <View style={styles.pickerLabelRow}>
+            <AppIcon name="calendar" size={14} color="#1E4DB7" />
+            <Text style={styles.pickerLabel}>Mês</Text>
+          </View>
           <CustomPicker
             selectedValue={mes}
             onValueChange={setMes}
@@ -364,14 +419,19 @@ export default function AppContent() {
 
       <View style={styles.cards}>
         {cardsResumo.map((card) => (
-          <View key={card.titulo} style={[styles.cardResumo, { backgroundColor: card.cor }]}>
-            <Text style={styles.tituloResumo}>{card.titulo}</Text>
-            <Text style={styles.valorResumo}>{card.valor}</Text>
-          </View>
+          <ResumoCard key={card.titulo} {...card} />
         ))}
       </View>
 
       <UsoLimiteCard totais={totais} contas={contas} />
+
+      <View style={styles.listaSectionHeader}>
+        <AppIcon name="list-outline" size={18} color="#1E4DB7" />
+        <Text style={styles.listaSectionTitulo}>Contas do período</Text>
+        {!loading ? (
+          <Text style={styles.listaSectionContagem}>{contasExibidas.length}</Text>
+        ) : null}
+      </View>
 
       <View
         style={[styles.tabelaContainer, { height: Math.max(alturaDisponivel, 280) }]}
@@ -381,8 +441,8 @@ export default function AppContent() {
         }}
       >
         <View style={styles.tabelaHeader}>
-          <Text style={[styles.cabecalho, styles.nomeColuna]}>Nome</Text>
-          <Text style={styles.cabecalho}>Vencimento</Text>
+          <Text style={[styles.cabecalho, styles.nomeColunaHeader]}>Nome</Text>
+          <Text style={styles.cabecalho}>Venc.</Text>
           <Text style={styles.cabecalho}>Valor</Text>
           <Text style={styles.cabecalho}>Paga</Text>
         </View>
@@ -396,11 +456,12 @@ export default function AppContent() {
           <FlatList
             data={contasExibidas}
             keyExtractor={(item) => String(item.id)}
-            renderItem={({ item }) => (
+            renderItem={({ item, index }) => (
               <View
                 style={[
                   styles.itemCard,
                   item.paga ? styles.itemCardPago : styles.itemCardPendente,
+                  index === contasExibidas.length - 1 ? styles.itemCardLast : null,
                 ]}
               >
                 <TouchableOpacity
@@ -547,39 +608,42 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     marginTop: 35,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
     backgroundColor: '#F4F8FF',
   },
   titulo: {
-    fontSize: 22,
+    fontSize: 17,
     fontWeight: '800',
     color: '#fff',
     textAlign: 'center',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginBottom: 10,
+    letterSpacing: 0.3,
     backgroundColor: '#1E4DB7',
-    paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#17305C',
+    paddingVertical: 11,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    shadowColor: '#16324F',
     shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
     elevation: 4,
   },
   botaoNovaConta: {
     backgroundColor: '#1E8E5A',
-    paddingVertical: 13,
-    borderRadius: 12,
-    marginVertical: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    gap: 8,
     elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 3,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
   },
   textoBotao: {
     color: '#fff',
@@ -589,44 +653,76 @@ const styles = StyleSheet.create({
   filtros: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 4,
-    marginBottom: 10,
+    marginBottom: 12,
+    gap: 10,
   },
   pickerContainer: {
-    borderRadius: 10,
-    overflow: 'hidden',
-    width: '48%',
+    flex: 1,
+  },
+  pickerLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 5,
+    paddingLeft: 2,
+  },
+  pickerLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5D6F86',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
   picker: {
     width: '100%',
-    height: 50,
+    height: 46,
     backgroundColor: '#fff',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
   cards: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 4,
   },
   cardResumo: {
     width: '48%',
-    padding: 16,
+    minHeight: 108,
+    padding: 14,
     borderRadius: 14,
-    marginVertical: 5,
-    alignItems: 'flex-start',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
     elevation: 3,
-    shadowColor: '#17305C',
+    shadowColor: '#16324F',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  cardResumoIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
   tituloResumo: {
-    fontSize: 13,
-    color: '#5D6F86',
-    marginBottom: 6,
+    fontSize: 12,
+    color: '#6B7A90',
+    marginBottom: 4,
+    fontWeight: '600',
   },
   valorResumo: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#16324F',
   },
@@ -634,37 +730,53 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 14,
     borderRadius: 14,
-    marginVertical: 5,
+    marginVertical: 6,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#D9E4F2',
+    borderColor: '#E3EBF5',
     elevation: 3,
-    shadowColor: '#17305C',
+    shadowColor: '#16324F',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  cardUsoLimiteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  cardUsoLimiteIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#E9F5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tituloUsoLimite: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#33415C',
-    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#16324F',
   },
   barraUsoLimiteTrack: {
-    height: 10,
-    backgroundColor: '#E8EEF5',
-    borderRadius: 6,
+    height: 8,
+    backgroundColor: '#EEF3F9',
+    borderRadius: 8,
     overflow: 'hidden',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   barraUsoLimiteFill: {
     height: '100%',
-    borderRadius: 6,
+    borderRadius: 8,
+    minWidth: 4,
   },
   linhaUsoLimite: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 4,
   },
   percentualUsoLimite: {
     fontSize: 13,
@@ -680,52 +792,100 @@ const styles = StyleSheet.create({
   estouroUsoLimite: {
     color: '#D64545',
   },
+  semLimiteWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  semLimiteTextos: {
+    flex: 1,
+  },
   semLimiteTexto: {
     fontSize: 14,
     fontWeight: '700',
     color: '#5D6F86',
   },
   semLimiteDica: {
-    marginTop: 4,
+    marginTop: 2,
     fontSize: 12,
     color: '#6B7A90',
   },
+  listaSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 8,
+    gap: 8,
+  },
+  listaSectionTitulo: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#16324F',
+  },
+  listaSectionContagem: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E4DB7',
+    backgroundColor: '#E9F5FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
   tabelaContainer: {
-    marginTop: 16,
     borderWidth: 1,
-    borderColor: '#D9E4F2',
+    borderColor: '#E3EBF5',
     borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   tabelaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#EDF4FF',
-    padding: 12,
+    backgroundColor: '#F8FAFD',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E3EBF5',
   },
   cabecalho: {
-    fontWeight: '800',
-    fontSize: 13,
-    color: '#33415C',
+    fontWeight: '700',
+    fontSize: 11,
+    color: '#6B7A90',
     width: '22%',
     textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  nomeColunaHeader: {
+    width: '34%',
+    textAlign: 'left',
   },
   nomeColuna: {
     width: '34%',
   },
   itemCard: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EDF1F7',
+    borderBottomColor: '#EEF3F9',
+  },
+  itemCardLast: {
+    borderBottomWidth: 0,
   },
   itemCardPago: {
-    backgroundColor: '#F2FBF5',
+    backgroundColor: '#FAFDFB',
   },
   itemCardPendente: {
-    backgroundColor: '#FFF8F2',
+    backgroundColor: '#FFFCFA',
   },
   itemContent: {
     flexDirection: 'row',
@@ -735,36 +895,37 @@ const styles = StyleSheet.create({
   itemTitulo: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#1B263B',
+    color: '#16324F',
   },
   itemCategoria: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6B7A90',
-    marginTop: 2,
+    marginTop: 3,
   },
   itemParcelamento: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#1E4DB7',
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 3,
   },
   itemRecorrencia: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#0F7B6C',
     fontWeight: '700',
-    marginTop: 2,
+    marginTop: 3,
   },
   coluna: {
     width: '22%',
-    fontSize: 13,
+    fontSize: 12,
     color: '#33415C',
     textAlign: 'center',
+    fontWeight: '500',
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -774,24 +935,25 @@ const styles = StyleSheet.create({
   },
   checkboxUnchecked: {
     backgroundColor: '#fff',
-    borderColor: '#8CA0B3',
+    borderColor: '#B8C5D6',
   },
   checkboxPlaceholder: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
   },
   feedbackContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 32,
     gap: 10,
   },
   feedbackText: {
     color: '#607086',
     fontSize: 14,
     textAlign: 'center',
-    marginTop: 10,
+    marginTop: 4,
   },
   listaContent: {
     paddingBottom: 16,
