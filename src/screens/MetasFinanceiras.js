@@ -12,9 +12,10 @@ import {
   Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIcon, { ModalCloseButton } from '../components/AppIcon';
-import CustomPicker from '../components/modal/CustomPicker';
+import MonthNavigator from '../components/MonthNavigator';
 import CategorySelectorField from '../components/categorias/CategorySelectorField';
 import CategoriaLabel from '../components/categorias/CategoriaLabel';
 import useCategorias from '../hooks/useCategorias';
@@ -25,15 +26,29 @@ import {
   buildQueryParams,
   formatCurrency,
   formatarMoeda,
-  mesesOptions,
   msgToast,
   obterMensagemErro,
 } from '../utils/util';
 
-const CORES_STATUS = {
-  dentro: '#1E8E5A',
-  atencao: '#E6A817',
-  excedida: '#D64545',
+const STATUS_CONFIG = {
+  dentro: {
+    label: 'Dentro da meta',
+    cor: '#1E8E5A',
+    bg: '#EAF9EF',
+    icon: 'checkmark-circle-outline',
+  },
+  atencao: {
+    label: 'Atenção',
+    cor: '#E6A817',
+    bg: '#FFF8E6',
+    icon: 'alert-circle-outline',
+  },
+  excedida: {
+    label: 'Excedida',
+    cor: '#D64545',
+    bg: '#FFF0F0',
+    icon: 'close-circle-outline',
+  },
 };
 
 function calcularPercentualMeta(gasto, meta) {
@@ -109,15 +124,114 @@ function montarAnosOptions(data) {
   );
 }
 
+function ResumoCard({ titulo, valor, icon, iconBg, iconColor, accentColor }) {
+  return (
+    <View style={styles.cardResumo}>
+      <View style={[styles.cardResumoIconWrap, { backgroundColor: iconBg }]}>
+        <AppIcon name={icon} size={18} color={iconColor} />
+      </View>
+      <Text style={styles.tituloResumo}>{titulo}</Text>
+      <Text style={[styles.valorResumo, accentColor ? { color: accentColor } : null]}>{valor}</Text>
+    </View>
+  );
+}
+
+function StatusBadge({ status }) {
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.dentro;
+
+  return (
+    <View style={[styles.statusBadge, { backgroundColor: config.bg }]}>
+      <AppIcon name={config.icon} size={14} color={config.cor} />
+      <Text style={[styles.statusBadgeTexto, { color: config.cor }]}>{config.label}</Text>
+    </View>
+  );
+}
+
 function MetaProgressBar({ percentual, status }) {
-  const cor = CORES_STATUS[status] || CORES_STATUS.dentro;
+  const config = STATUS_CONFIG[status] || STATUS_CONFIG.dentro;
   const larguraBarra = Math.min(100, Math.max(0, Number(percentual) || 0));
 
   return (
-    <View style={styles.barraContainer}>
-      <View style={styles.barraTrack}>
-        <View style={[styles.barraFill, { width: `${larguraBarra}%`, backgroundColor: cor }]} />
+    <View style={styles.barraTrack}>
+      <View style={[styles.barraFill, { width: `${larguraBarra}%`, backgroundColor: config.cor }]} />
+    </View>
+  );
+}
+
+function MetaCard({ meta, categorias, onEditar, onExcluir }) {
+  const config = STATUS_CONFIG[meta.status] || STATUS_CONFIG.dentro;
+
+  return (
+    <View style={[styles.metaCard, { borderLeftColor: config.cor }]}>
+      <View style={styles.metaHeader}>
+        <View style={styles.metaHeaderInfo}>
+          <CategoriaLabel
+            categoriaId={meta.categoriaId}
+            categorias={categorias}
+            textStyle={styles.metaCategoriaNome}
+          />
+        </View>
+        <StatusBadge status={meta.status} />
       </View>
+
+      <View style={styles.metaValoresGrid}>
+        <View style={styles.metaValorItem}>
+          <Text style={styles.metaLabel}>Meta mensal</Text>
+          <Text style={styles.metaValor}>{formatCurrency(meta.valorMeta)}</Text>
+        </View>
+        <View style={styles.metaValorItem}>
+          <Text style={styles.metaLabel}>Gasto no mês</Text>
+          <Text style={[styles.metaValor, { color: config.cor }]}>{formatCurrency(meta.gastoAtual)}</Text>
+        </View>
+      </View>
+
+      <View style={styles.metaProgressoHeader}>
+        <Text style={styles.metaProgressoLabel}>Utilização</Text>
+        <Text style={[styles.percentualTexto, { color: config.cor }]}>
+          {formatarPercentualMeta(meta.percentual)}
+        </Text>
+      </View>
+
+      <MetaProgressBar percentual={meta.percentual} status={meta.status} />
+
+      <View style={styles.acoesRow}>
+        <TouchableOpacity
+          onPress={() => onEditar(meta)}
+          accessibilityLabel="Editar meta"
+          style={styles.acaoBtn}
+          activeOpacity={0.75}
+        >
+          <AppIcon name="create-outline" size={18} color="#1E4DB7" />
+          <Text style={styles.acaoBtnTexto}>Editar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => onExcluir(meta)}
+          accessibilityLabel="Excluir meta"
+          style={[styles.acaoBtn, styles.acaoBtnExcluir]}
+          activeOpacity={0.75}
+        >
+          <AppIcon name="trash-outline" size={18} color="#D64545" />
+          <Text style={[styles.acaoBtnTexto, styles.acaoBtnTextoExcluir]}>Excluir</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function EstadoVazio({ onAdicionar }) {
+  return (
+    <View style={styles.vazioCard}>
+      <View style={styles.vazioIconWrap}>
+        <AppIcon name="flag-outline" size={28} color="#8CA0B3" />
+      </View>
+      <Text style={styles.vazioTitulo}>Nenhuma meta mensal cadastrada</Text>
+      <Text style={styles.vazioTexto}>
+        Crie metas mensais por categoria para acompanhar seus gastos em qualquer mês.
+      </Text>
+      <TouchableOpacity style={styles.btnNovaMetaVazio} onPress={onAdicionar} activeOpacity={0.85}>
+        <AppIcon name="add" size={18} color="#fff" />
+        <Text style={styles.btnNovaMetaText}>Adicionar meta</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -174,8 +288,19 @@ function ModalMetaForm({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
         <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-          <ModalCloseButton onPress={onClose} style={styles.modalFechar} color="#333" />
-          <Text style={styles.modalTitulo}>{editando ? 'Editar meta' : 'Nova meta'}</Text>
+          <ModalCloseButton onPress={onClose} style={styles.modalFechar} color="#5D6F86" />
+
+          <View style={styles.modalHeader}>
+            <View style={styles.modalIconWrap}>
+              <AppIcon name={editando ? 'create-outline' : 'flag-outline'} size={22} color="#1E4DB7" />
+            </View>
+            <Text style={styles.modalTitulo}>{editando ? 'Editar meta' : 'Nova meta'}</Text>
+            <Text style={styles.modalSubtitulo}>
+              {editando
+                ? 'Esta meta vale para todos os meses. Atualize o valor quando quiser.'
+                : 'Defina um valor mensal recorrente para esta categoria. Vale para todos os meses até ser editada.'}
+            </Text>
+          </View>
 
           {editando ? (
             <>
@@ -192,23 +317,30 @@ function ModalMetaForm({
             <CategorySelectorField value={categoriaId} onChange={setCategoriaId} label="Categoria:" />
           )}
 
-          <Text style={styles.modalLabel}>Valor da meta</Text>
+          <Text style={styles.modalLabel}>Valor da meta mensal</Text>
           <TextInput
             style={styles.inputValor}
             keyboardType="numeric"
             value={valorDisplay}
             onChangeText={handleValorChange}
             placeholder="R$ 0,00"
-            placeholderTextColor="#999"
+            placeholderTextColor="#8CA0B3"
           />
 
-          <TouchableOpacity
-            style={[styles.btnSalvar, salvando && styles.btnSalvarDisabled]}
-            onPress={handleSalvar}
-            disabled={salvando}
-          >
-            <Text style={styles.btnSalvarText}>{salvando ? 'Salvando...' : 'Salvar meta'}</Text>
-          </TouchableOpacity>
+          <View style={styles.modalAcoes}>
+            <TouchableOpacity style={styles.btnCancelar} onPress={onClose} disabled={salvando}>
+              <Text style={styles.btnCancelarText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.btnSalvar, salvando && styles.btnSalvarDisabled]}
+              onPress={handleSalvar}
+              disabled={salvando}
+              activeOpacity={0.85}
+            >
+              <AppIcon name="checkmark" size={18} color="#fff" />
+              <Text style={styles.btnSalvarText}>{salvando ? 'Salvando...' : 'Salvar meta'}</Text>
+            </TouchableOpacity>
+          </View>
         </Pressable>
       </Pressable>
     </Modal>
@@ -216,6 +348,9 @@ function ModalMetaForm({
 }
 
 export default function MetasFinanceiras() {
+  const insets = useSafeAreaInsets();
+  const scrollBottomPadding = Math.max(insets.bottom + 32, 72);
+
   const hoje = new Date();
   const [ano, setAno] = useState(hoje.getFullYear().toString());
   const [mes, setMes] = useState(hoje.getMonth().toString());
@@ -300,12 +435,57 @@ export default function MetasFinanceiras() {
       .sort((a, b) => b.percentual - a.percentual);
   }, [metas, gastosPorCategoria]);
 
+  const resumo = useMemo(() => {
+    const totalMetas = metasComProgresso.length;
+    const totalPrevisto = metasComProgresso.reduce((acc, m) => acc + (Number(m.valorMeta) || 0), 0);
+    const totalGasto = metasComProgresso.reduce((acc, m) => acc + (Number(m.gastoAtual) || 0), 0);
+    const metasExcedidas = metasComProgresso.filter((m) => m.status === 'excedida').length;
+
+    return { totalMetas, totalPrevisto, totalGasto, metasExcedidas };
+  }, [metasComProgresso]);
+
+  const resumoCards = useMemo(
+    () => [
+      {
+        titulo: 'Metas cadastradas',
+        valor: String(resumo.totalMetas),
+        icon: 'flag-outline',
+        iconBg: '#F3EEFF',
+        iconColor: '#6B4FA3',
+        accentColor: '#6B4FA3',
+      },
+      {
+        titulo: 'Total previsto',
+        valor: formatCurrency(resumo.totalPrevisto),
+        icon: 'wallet-outline',
+        iconBg: '#E9F5FF',
+        iconColor: '#1E4DB7',
+      },
+      {
+        titulo: 'Gasto monitorado',
+        valor: formatCurrency(resumo.totalGasto),
+        icon: 'trending-up-outline',
+        iconBg: '#EAF9EF',
+        iconColor: '#1E8E5A',
+        accentColor: '#1E8E5A',
+      },
+      {
+        titulo: 'Metas excedidas',
+        valor: String(resumo.metasExcedidas),
+        icon: 'alert-circle-outline',
+        iconBg: '#FFF0F0',
+        iconColor: '#D64545',
+        accentColor: resumo.metasExcedidas > 0 ? '#D64545' : '#16324F',
+      },
+    ],
+    [resumo]
+  );
+
   const categoriasComMeta = useMemo(
     () => metas.map((m) => m.categoriaId),
     [metas]
   );
 
-  const anosPicker = anosOptions.length > 0 ? anosOptions : [{ label: ano, value: ano }];
   const loading = loadingContas || loadingMetas;
 
   const abrirNovaMeta = () => {
@@ -352,43 +532,22 @@ export default function MetasFinanceiras() {
     msgToast(metaEditando ? 'Meta atualizada!' : 'Meta cadastrada!');
   };
 
-  const renderStatusLabel = (status) => {
-    if (status === 'excedida') {
-      return <Text style={[styles.statusLabel, { color: CORES_STATUS.excedida }]}>Meta excedida</Text>;
-    }
-    if (status === 'atencao') {
-      return <Text style={[styles.statusLabel, { color: CORES_STATUS.atencao }]}>Atenção</Text>;
-    }
-    return null;
-  };
-
   return (
-    <View style={styles.container}>
-      <View style={styles.filtros}>
-        <View style={styles.filtroColuna}>
-          <CustomPicker
-            selectedValue={ano}
-            onValueChange={setAno}
-            options={anosPicker}
-            placeholder="Selecione o ano"
-            style={styles.picker}
-          />
-        </View>
-        <View style={styles.filtroColuna}>
-          <CustomPicker
-            selectedValue={mes}
-            onValueChange={setMes}
-            options={mesesOptions}
-            placeholder="Selecione o mês"
-            style={styles.picker}
-          />
-        </View>
-      </View>
+    <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
+      <MonthNavigator mes={mes} ano={ano} setMes={setMes} setAno={setAno} style={styles.monthNavigator} />
 
-      <TouchableOpacity style={styles.btnNovaMeta} onPress={abrirNovaMeta}>
-        <AppIcon name="add-circle-outline" size={20} color="#fff" />
+      <TouchableOpacity style={styles.btnNovaMeta} onPress={abrirNovaMeta} activeOpacity={0.85}>
+        <AppIcon name="add" size={20} color="#fff" />
         <Text style={styles.btnNovaMetaText}>Nova meta</Text>
       </TouchableOpacity>
+
+      {!loading && metasComProgresso.length > 0 ? (
+        <View style={styles.cards}>
+          {resumoCards.map((card) => (
+            <ResumoCard key={card.titulo} {...card} />
+          ))}
+        </View>
+      ) : null}
 
       {loading ? (
         <View style={styles.feedbackContainer}>
@@ -397,58 +556,21 @@ export default function MetasFinanceiras() {
         </View>
       ) : metasComProgresso.length === 0 ? (
         <View style={styles.feedbackContainer}>
-          <AppIcon name="flag-outline" size={28} color="#7B8BA3" />
-          <Text style={styles.feedbackTitulo}>Nenhuma meta cadastrada</Text>
-          <Text style={styles.feedbackText}>
-            Defina um valor limite por categoria para acompanhar seus gastos mensais.
-          </Text>
+          <EstadoVazio onAdicionar={abrirNovaMeta} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.listaContent} showsVerticalScrollIndicator>
+        <ScrollView
+          contentContainerStyle={[styles.listaContent, { paddingBottom: scrollBottomPadding }]}
+          showsVerticalScrollIndicator
+        >
           {metasComProgresso.map((meta) => (
-            <View key={meta.categoriaId} style={styles.metaCard}>
-              <View style={styles.metaHeader}>
-                <CategoriaLabel
-                  categoriaId={meta.categoriaId}
-                  categorias={categorias}
-                  textStyle={styles.metaCategoriaNome}
-                />
-                <View style={styles.acoesRow}>
-                  <TouchableOpacity
-                    onPress={() => abrirEditarMeta(meta)}
-                    accessibilityLabel="Editar meta"
-                    style={styles.acaoBtn}
-                  >
-                    <AppIcon name="create-outline" size={20} color="#1E4DB7" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    onPress={() => confirmarExclusao(meta)}
-                    accessibilityLabel="Excluir meta"
-                    style={styles.acaoBtn}
-                  >
-                    <AppIcon name="trash-outline" size={20} color="#D64545" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.metaLinha}>
-                <Text style={styles.metaLabel}>Meta:</Text>
-                <Text style={styles.metaValor}>{formatCurrency(meta.valorMeta)}</Text>
-              </View>
-              <View style={styles.metaLinha}>
-                <Text style={styles.metaLabel}>Gasto atual:</Text>
-                <Text style={styles.metaValor}>{formatCurrency(meta.gastoAtual)}</Text>
-              </View>
-
-              <MetaProgressBar percentual={meta.percentual} status={meta.status} />
-
-              <View style={styles.metaFooter}>
-                <Text style={[styles.percentualTexto, { color: CORES_STATUS[meta.status] }]}>
-                  {formatarPercentualMeta(meta.percentual)}
-                </Text>
-                {renderStatusLabel(meta.status)}
-              </View>
-            </View>
+            <MetaCard
+              key={meta.categoriaId}
+              meta={meta}
+              categorias={categorias}
+              onEditar={abrirEditarMeta}
+              onExcluir={confirmarExclusao}
+            />
           ))}
         </ScrollView>
       )}
@@ -471,131 +593,263 @@ export default function MetasFinanceiras() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     backgroundColor: '#F4F8FF',
   },
-  filtros: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  monthNavigator: {
     marginBottom: 10,
-  },
-  filtroColuna: {
-    width: '48%',
-  },
-  picker: {
-    width: '100%',
-    height: 50,
-    backgroundColor: '#fff',
-    borderRadius: 12,
   },
   btnNovaMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#1E4DB7',
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: '#1E8E5A',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+    elevation: 3,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
   },
   btnNovaMetaText: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  cards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginBottom: 10,
+  },
+  cardResumo: {
+    width: '48%',
+    minHeight: 96,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    elevation: 3,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  cardResumoIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  tituloResumo: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#5D6F86',
+    marginBottom: 4,
+  },
+  valorResumo: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#16324F',
   },
   feedbackContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    gap: 8,
-  },
-  feedbackTitulo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#16324F',
-    marginTop: 8,
   },
   feedbackText: {
     color: '#607086',
     fontSize: 14,
     textAlign: 'center',
+    marginTop: 12,
   },
   listaContent: {
-    paddingBottom: 24,
+    paddingTop: 2,
   },
   metaCard: {
     backgroundColor: '#fff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#D9E4F2',
+    borderColor: '#E3EBF5',
+    borderLeftWidth: 4,
     padding: 14,
-    marginBottom: 12,
+    marginBottom: 10,
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
   },
   metaHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
+    gap: 8,
+  },
+  metaHeaderInfo: {
+    flex: 1,
   },
   metaCategoriaNome: {
     fontSize: 16,
     fontWeight: '800',
     color: '#16324F',
-    flex: 1,
-    paddingRight: 8,
   },
-  acoesRow: {
+  statusBadge: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
-  acaoBtn: {
-    padding: 4,
+  statusBadgeTexto: {
+    fontSize: 11,
+    fontWeight: '700',
   },
-  metaLinha: {
+  metaValoresGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    gap: 12,
+    marginBottom: 12,
+  },
+  metaValorItem: {
+    flex: 1,
+    backgroundColor: '#F8FAFD',
+    borderRadius: 10,
+    padding: 10,
   },
   metaLabel: {
-    fontSize: 13,
+    fontSize: 11,
+    fontWeight: '600',
     color: '#6B7A90',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   metaValor: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#33415C',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#16324F',
   },
-  barraContainer: {
-    marginTop: 10,
+  metaProgressoHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 6,
+  },
+  metaProgressoLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7A90',
   },
   barraTrack: {
     height: 10,
-    backgroundColor: '#E8EEF5',
-    borderRadius: 6,
+    backgroundColor: '#EEF3F9',
+    borderRadius: 8,
     overflow: 'hidden',
   },
   barraFill: {
     height: '100%',
-    borderRadius: 6,
-  },
-  metaFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderRadius: 8,
+    minWidth: 4,
   },
   percentualTexto: {
     fontSize: 15,
     fontWeight: '800',
   },
-  statusLabel: {
+  acoesRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EEF3F9',
+  },
+  acaoBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: '#E9F5FF',
+  },
+  acaoBtnExcluir: {
+    backgroundColor: '#FFF0F0',
+  },
+  acaoBtnTexto: {
     fontSize: 13,
     fontWeight: '700',
+    color: '#1E4DB7',
+  },
+  acaoBtnTextoExcluir: {
+    color: '#D64545',
+  },
+  vazioCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E3EBF5',
+    padding: 28,
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    maxWidth: 320,
+  },
+  vazioIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: '#F0F4FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  vazioTitulo: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#16324F',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  vazioTexto: {
+    fontSize: 14,
+    color: '#6B7A90',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  btnNovaMetaVazio: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1E8E5A',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(22, 50, 79, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
@@ -604,61 +858,117 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     width: '100%',
     maxWidth: 400,
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 20,
+    elevation: 8,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
   },
   modalFechar: {
     position: 'absolute',
     right: 12,
-    top: 10,
+    top: 12,
     zIndex: 1,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 18,
+    paddingTop: 4,
+  },
+  modalIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#E9F5FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   modalTitulo: {
     fontSize: 18,
     fontWeight: '800',
     color: '#16324F',
-    marginBottom: 16,
     textAlign: 'center',
   },
+  modalSubtitulo: {
+    marginTop: 6,
+    fontSize: 13,
+    color: '#6B7A90',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
   modalLabel: {
-    fontWeight: '600',
+    fontSize: 13,
+    fontWeight: '700',
     marginBottom: 6,
-    color: '#33415C',
+    color: '#5D6F86',
   },
   categoriaFixa: {
     borderWidth: 1,
-    borderColor: '#D9E4F2',
-    borderRadius: 6,
+    borderColor: '#E3EBF5',
+    borderRadius: 12,
     padding: 12,
-    marginBottom: 12,
-    backgroundColor: '#F4F8FF',
+    marginBottom: 14,
+    backgroundColor: '#F8FAFD',
   },
   categoriaFixaTexto: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#16324F',
   },
   inputValor: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 6,
-    padding: 12,
+    borderColor: '#E3EBF5',
+    borderRadius: 12,
+    padding: 14,
     fontSize: 18,
-    marginBottom: 16,
+    fontWeight: '700',
+    marginBottom: 18,
     color: '#16324F',
+    backgroundColor: '#F8FAFD',
+  },
+  modalAcoes: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  btnCancelar: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D9E4F2',
+    backgroundColor: '#fff',
+  },
+  btnCancelarText: {
+    color: '#5D6F86',
+    fontWeight: '700',
+    fontSize: 15,
   },
   btnSalvar: {
-    backgroundColor: '#28a745',
-    padding: 14,
-    borderRadius: 8,
+    flex: 1.4,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#1E8E5A',
+    paddingVertical: 14,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#16324F',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 3,
   },
   btnSalvarDisabled: {
     opacity: 0.7,
   },
   btnSalvarText: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '800',
     fontSize: 15,
   },
 });
