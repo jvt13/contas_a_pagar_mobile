@@ -311,8 +311,8 @@ controle_contas/
 ### `src/screens/AppContent.js` (rota `Home`, header oculto) — **tela principal**
 - **Objetivo**: Painel do mês: cards de resumo (limite, total, pagas, pendentes), tabela de contas, criação/edição/exclusão, marcação de paga, Central de Controle. Única tela com **menu global** (`MenuHeader`).
 - **Hooks**: `useContas(ano, mes, sharedOrgKey)`, `useCategorias()`, `useCartaoManager` (importado como `useCartoes`; só `carregarCartoes()` no boot).
-- **Componentes**: `MenuHeader`, `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` (local).
-- **Utils diretos**: `deleteDados`, `formatCurrency`, `mesesOptions`, `msgToast`, `obterMensagemErro`, `contaPertenceGrupoParcela`, `perguntarEscopoParcela`, `verificarAtualizacao`, AsyncStorage (`@userKeyShareId`).
+- **Componentes**: `MenuHeader`, `AppIcon`, `MonthNavigator`, `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` (local).
+- **Utils diretos**: `deleteDados`, `formatCurrency`, `msgToast`, `obterMensagemErro`, `contaPertenceGrupoParcela`, `perguntarEscopoParcela`, `verificarAtualizacao`, AsyncStorage (`@userKeyShareId`).
 - **Fluxo de dados**:
   1. Filtros `ano`/`mes` (default = hoje) → `useContas` recarrega via `POST /contas_lancadas`.
   2. Boot: `verificarAtualizacao()`, `carregarCartoes()`, lê `sharedOrgKey`.
@@ -325,7 +325,7 @@ controle_contas/
 ### `src/screens/ContasAPagar.js` (rota `ContasAPagar`, header nativo do Stack)
 - **Objetivo**: Relatório somente leitura das contas **pendentes** do mês/ano (eixo = vencimento).
 - **Hooks**: `useRelatorioContas('/contas_pendentes', 'contasPendentes')`, `useCategorias()`.
-- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Componentes**: `AppIcon`, `MonthNavigator`, `CategoriaLabel`.
 - **Fluxo de dados**: hook carrega via `GET /contas_pendentes?ano=&mes=&organization=`; tela calcula `totalPendente` client-side (reduce sobre `valor`); coluna Cartão usa `getLabelCartao(item.tipo_cartao)`; tabela com scroll horizontal (minWidth 600).
 
 ### `src/screens/ContasPagas.js` (rota `ContasPagas`)
@@ -341,25 +341,25 @@ controle_contas/
 ### `src/screens/RelatorioCategorias.js` (rota `RelatorioCategorias`)
 - **Objetivo**: Relatório de gastos agrupados por categoria e subcategoria no mês/ano selecionado (eixo = **vencimento**, alinhado aos demais relatórios financeiros).
 - **Hooks**: `useCategorias()`.
-- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Componentes**: `AppIcon`, `MonthNavigator`, `CategoriaLabel`.
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` → unificação client-side por `id` (sem duplicatas) → agrupamento (`useMemo`) por `categoria`/`subcategoria` com totais, quantidades e percentuais. Cards: total no período, pago, pendente. Estados: loading, vazio.
 
 ### `src/screens/MetasFinanceiras.js` (rota `MetasFinanceiras`)
 - **Objetivo**: MVP de metas financeiras por categoria no mês selecionado (eixo = **vencimento**): cadastro, edição, exclusão e acompanhamento de gasto vs meta com faixas de status (verde ≤80%, amarelo >80–100%, vermelho >100%).
 - **Hooks**: `useMetasFinanceiras()`, `useCategorias()`.
-- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategorySelectorField`, `CategoriaLabel`.
+- **Componentes**: `AppIcon`, `MonthNavigator`, `CategorySelectorField`, `CategoriaLabel`.
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` → unificação por `id` → agregação client-side (`useMemo`) de gasto por categoria; metas carregadas do AsyncStorage; percentual = gasto ÷ meta × 100. Recarrega via `useFocusEffect`.
 
 ### `src/screens/DashboardFinanceiro.js` (rota `DashboardFinanceiro`)
 - **Objetivo**: Painel consolidado da situação financeira do mês (eixo = **vencimento**): resumo Limite mensal/Despesas/Disponível, composição Crédito/Débito/Dinheiro, top 5 categorias e indicadores rápidos (pagas, pendentes, uso do limite, utilização dos cartões).
 - **Hooks**: `useCategorias()`, `useCartoesLookup()` (mapa id→cartão), `useDashboardCartoes()` (`useFocusEffect` → utilização dos cartões).
-- **Componentes**: `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Componentes**: `MonthNavigator`, `CategoriaLabel`.
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` (`useLimites` → `POST /contas_lancadas`, mesma fonte/conversão da Home) → unificação por `id` → agregações client-side (`useMemo`): **Limite mensal** = `total_limite` retornado por `obterLimiteMensal`; **Despesas** = soma de valores no período (vencimento); **Disponível** = limite − despesas (se limite ≤ 0, exibe "Sem limite definido"); composição por tipo de cartão; top 5 categorias; indicadores rápidos; utilização dos cartões via `useDashboardCartoes`. Sem endpoint novo.
 
 ### `src/screens/FechamentoMensal.js` (rota `FechamentoMensal`)
 - **Objetivo**: MVP de fechamento mensal — consolidar e salvar snapshot do resumo financeiro do mês (eixo = **vencimento**) para conferência. **Não bloqueia** edição de contas, pagamentos ou limites.
 - **Hooks**: `useFechamentoMensal()` (persistência local), `useCategorias()`.
-- **Componentes**: `AppIcon`, `CustomPicker` (ano/mês), `CategoriaLabel`.
+- **Componentes**: `AppIcon`, `MonthNavigator`, `CategoriaLabel`.
 - **Utils**: `resumoFinanceiroVencimento.js` (`unificarContasPorVencimento`, `montarResumoFechamento`, `montarAnosOptions`).
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` → unificação por `id` → `montarResumoFechamento` (prévia em tempo real) → salvar/reabrir/atualizar snapshot via AsyncStorage (`@fechamentos_mensais_<orgId>`). Atualizar fechamento existente exige confirmação. Recarrega via `useFocusEffect`.
 
@@ -374,6 +374,7 @@ controle_contas/
 | `AppIcon.js` | Mapeia nomes semânticos → Ionicons (`APP_ICONS`); também exporta `ModalCloseButton` | `name`, `size=22`, `color='#555'`, `style`, `accessibilityLabel`; ModalCloseButton: `onPress`, `style`, `color`, `size` | Quase todos os componentes/telas |
 | `CartaoLabel.js` | Exibe label "Nome - Tipo" do cartão (busca via `useCartoesLookup` se `cartoes` não for passado) | `cartaoId`, `cartao`, `cartoes`, `style`, `numberOfLines=1` | **Sem consumidores ativos** (candidato a remoção/adoção) |
 | `MenuHeader.js` | Menu global da Home: hamburger com navegação para telas secundárias, Central de Controle (quando `onOpenConfig` é passado) e Sair; avatar/saudação do usuário | `onOpenConfig` (opcional — exibe item "Central de Controle" somente se for função) | `AppContent.js` (Home) |
+| `MonthNavigator.js` | Navegação sequencial de mês/ano com setas (‹ ›); exibe rótulo `Mês/Ano` (ex.: `Julho/2026`); atualiza `mes` (string 0-based) e `ano` (string) via `setMes`/`setAno`; transição Janeiro↔Dezembro ajusta o ano | `mes`, `ano`, `setMes`, `setAno`, `style?` | `AppContent`, `ContasAPagar`, `ContasPagas`, `DashboardFinanceiro`, `RelatorioCategorias`, `MetasFinanceiras`, `FechamentoMensal` |
 
 - `MenuHeader` faz **logout**: `clearSession()` + `navigation.reset` para `Login`. Lê `@username` do AsyncStorage. Telas secundárias **não** renderizam `MenuHeader`; usam header nativo do Stack configurado em `App.js` (`stackScreenOptions`).
 
@@ -407,7 +408,7 @@ controle_contas/
 
 | Componente | Responsabilidade | Props | Usado em |
 |---|---|---|---|
-| `CustomPicker.js` | Picker genérico (botão + modal com FlatList de opções `{label, value}`) | `selectedValue`, `onValueChange(value)`, `options`, `placeholder`, `style` | `AppContent` (ano/mês), `ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `modal-insert` (cartão) |
+| `CustomPicker.js` | Picker genérico (botão + modal com FlatList de opções `{label, value}`) | `selectedValue`, `onValueChange(value)`, `options`, `placeholder`, `style` | `modal-insert` (cartão) |
 | `ModalConfig.js` | "Central de Controle": botões Gerenciar limite / Criar novo cartão / Controle de Organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
 | `ModalContaAcoes.js` | Modal de long-press na conta: mostra nome, label de parcela/recorrência + status, botões Editar/Excluir | `visible`, `onClose`, `contaSelecionada`, `onEditar`, `onExcluir` | `AppContent` |
 | `ModalGerenciarCartao.js` | CRUD de cartões: banco (grid), apelido, tipo (chips crédito/débito), dias de vencimento/fechamento e limite (só crédito), lista com Editar/Excluir. Usa `useCartaoManager` | `visible`, `onClose` | `AppContent` |
@@ -733,7 +734,7 @@ Dependências transversais (consumidas por quase tudo):
 ### Quando criar novo componente
 - Quando o mesmo bloco visual for usado em **2+ lugares**, ou quando um modal de domínio novo for necessário.
 - Siga o padrão existente: componente apresentacional recebe props; modais de domínio podem usar hooks. Subpastas por domínio (`bancos/`, `categorias/`, `dashboard/`, `modal/`).
-- Use `AppIcon`/`ModalCloseButton` para ícones; `CustomPicker` para seleções simples.
+- Use `AppIcon`/`ModalCloseButton` para ícones; `MonthNavigator` para filtro mês/ano nas telas financeiras; `CustomPicker` para outras seleções simples (ex.: cartão no modal de conta).
 
 ### Quando NÃO criar novos arquivos
 - Função utilitária pequena para um domínio já coberto → adicionar ao util existente (`util.js`, `cartao.js`, `categorias.js`, etc.).
@@ -748,6 +749,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-06-21 | Navegador mensal `MonthNavigator` (substitui pickers ano/mês) | `src/components/MonthNavigator.js`, 7 telas financeiras, `docs/PROJECT_STRUCTURE.md` |
 | 2026-06-21 | Padronização de navegação visual | `App.js`, `src/screens/DashboardCartoes.js`, `docs/PROJECT_STRUCTURE.md` |
 | 2026-06-20 | Nova tela Fechamento Mensal (MVP) | `src/screens/FechamentoMensal.js`, `src/hooks/useFechamentoMensal.js`, `src/utils/resumoFinanceiroVencimento.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Metas Financeiras (MVP) | `src/screens/MetasFinanceiras.js`, `src/hooks/useMetasFinanceiras.js`, `App.js`, `MenuHeader.js` |

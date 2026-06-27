@@ -11,7 +11,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppIcon from '../components/AppIcon';
-import CustomPicker from '../components/modal/CustomPicker';
+import MonthNavigator from '../components/MonthNavigator';
 import CategoriaLabel from '../components/categorias/CategoriaLabel';
 import useCategorias from '../hooks/useCategorias';
 import useCartoesLookup from '../hooks/useCartoesLookup';
@@ -23,7 +23,6 @@ import { isCartaoDebito } from '../utils/tipoCartao';
 import {
   buildQueryParams,
   formatCurrency,
-  mesesOptions,
   obterMensagemErro,
 } from '../utils/util';
 
@@ -401,8 +400,6 @@ export default function DashboardFinanceiro() {
     }, [carregarCartoes])
   );
 
-  const anosPicker = anosOptions.length > 0 ? anosOptions : [{ label: ano, value: ano }];
-
   const dashboard = useMemo(
     () => montarDashboardFinanceiro(contas, limiteMes, mapaCartoes, resumosCartoes),
     [contas, limiteMes, mapaCartoes, resumosCartoes]
@@ -473,34 +470,7 @@ export default function DashboardFinanceiro() {
 
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
-      <View style={styles.filtros}>
-        <View style={styles.filtroColuna}>
-          <View style={styles.pickerLabelRow}>
-            <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
-            <Text style={styles.pickerLabel}>Ano</Text>
-          </View>
-          <CustomPicker
-            selectedValue={ano}
-            onValueChange={setAno}
-            options={anosPicker}
-            placeholder="Selecione o ano"
-            style={styles.picker}
-          />
-        </View>
-        <View style={styles.filtroColuna}>
-          <View style={styles.pickerLabelRow}>
-            <AppIcon name="calendar" size={14} color="#1E4DB7" />
-            <Text style={styles.pickerLabel}>Mês</Text>
-          </View>
-          <CustomPicker
-            selectedValue={mes}
-            onValueChange={setMes}
-            options={mesesOptions}
-            placeholder="Selecione o mês"
-            style={styles.picker}
-          />
-        </View>
-      </View>
+      <MonthNavigator mes={mes} ano={ano} setMes={setMes} setAno={setAno} style={styles.monthNavigator} />
 
       {loading ? (
         <View style={styles.feedbackContainer}>
@@ -633,41 +603,8 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     backgroundColor: '#F4F8FF',
   },
-  filtros: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  monthNavigator: {
     marginBottom: 10,
-    gap: 10,
-  },
-  filtroColuna: {
-    flex: 1,
-  },
-  pickerLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 5,
-    paddingLeft: 2,
-  },
-  pickerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5D6F86',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  picker: {
-    width: '100%',
-    height: 46,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E3EBF5',
-    elevation: 2,
-    shadowColor: '#16324F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
   },
   scrollContent: {
     paddingTop: 4,

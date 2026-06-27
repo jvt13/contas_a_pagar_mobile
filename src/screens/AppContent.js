@@ -24,14 +24,14 @@ import ModalGerenciarLimite from '../components/modal/ModalGerenciarLimite';
 import ModalContaAcoes from '../components/modal/ModalContaAcoes';
 import ModalShareOrganization from '../components/modal/ModalShareOrganization';
 import { deleteDados } from '../utils/services';
-import { formatCurrency, mesesOptions, msgToast, obterMensagemErro } from '../utils/util';
+import { formatCurrency, msgToast, obterMensagemErro } from '../utils/util';
 import {
   contaPertenceGrupoParcela,
   extrairNomeBaseParcela,
   perguntarEscopoParcela,
 } from '../utils/parcelamento';
 import { verificarAtualizacao } from '../utils/check_version';
-import CustomPicker from '../components/modal/CustomPicker';
+import MonthNavigator from '../components/MonthNavigator';
 import CategoriaLabel from '../components/categorias/CategoriaLabel';
 
 function CustomCheckBox({ value, onValueChange }) {
@@ -389,35 +389,7 @@ export default function AppContent() {
         <Text style={styles.textoBotao}>Nova conta</Text>
       </TouchableOpacity>
 
-      <View style={styles.filtros}>
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerLabelRow}>
-            <AppIcon name="calendar-outline" size={14} color="#1E4DB7" />
-            <Text style={styles.pickerLabel}>Ano</Text>
-          </View>
-          <CustomPicker
-            selectedValue={ano}
-            onValueChange={setAno}
-            options={anos}
-            placeholder="Selecione o ano"
-            style={styles.picker}
-          />
-        </View>
-
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerLabelRow}>
-            <AppIcon name="calendar" size={14} color="#1E4DB7" />
-            <Text style={styles.pickerLabel}>Mês</Text>
-          </View>
-          <CustomPicker
-            selectedValue={mes}
-            onValueChange={setMes}
-            options={mesesOptions}
-            placeholder="Selecione o mês"
-            style={styles.picker}
-          />
-        </View>
-      </View>
+      <MonthNavigator mes={mes} ano={ano} setMes={setMes} setAno={setAno} style={styles.monthNavigator} />
 
       <View style={styles.cards}>
         {cardsResumo.map((card) => (
@@ -635,41 +607,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
-  filtros: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  monthNavigator: {
     marginBottom: 10,
-    gap: 10,
-  },
-  pickerContainer: {
-    flex: 1,
-  },
-  pickerLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 5,
-    paddingLeft: 2,
-  },
-  pickerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#5D6F86',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  picker: {
-    width: '100%',
-    height: 46,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E3EBF5',
-    elevation: 2,
-    shadowColor: '#16324F',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
   },
   cards: {
     flexDirection: 'row',

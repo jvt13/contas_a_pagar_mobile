@@ -52,6 +52,20 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-06-21 — Navegador mensal `MonthNavigator`
+
+- **Tipo**: Novo componente + Outro (UX — filtro mês/ano).
+- **Descrição**: Substituição dos filtros visuais de ano/mês baseados em `CustomPicker` por navegação sequencial com setas (`‹ Mês/Ano ›`) nas telas financeiras. Convenção interna preservada: `mes` continua string 0-based (`'0'`–`'11'`), `ano` como string; transição Janeiro↔Dezembro ajusta o ano automaticamente. Hooks, endpoints e eixos de dados (`data_lancamento` na Home, `vencimento` nos relatórios) inalterados.
+- **Arquivos impactados**:
+  - `src/components/MonthNavigator.js` (criado)
+  - `src/screens/AppContent.js`, `ContasAPagar.js`, `ContasPagas.js`, `DashboardFinanceiro.js`, `RelatorioCategorias.js`, `MetasFinanceiras.js`, `FechamentoMensal.js` (alterados — filtro visual)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: telas financeiras listadas passam a usar `MonthNavigator`; `CustomPicker` permanece em `modal-insert` (cartão) e `ModalGerenciarLimite`.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §5 (telas), §6 (`MonthNavigator`, `CustomPicker`), §13, §14.
+
+---
+
 ### 2026-06-21 — Padronização de navegação visual
 
 - **Tipo**: Outro (UX/navegação — sem mudança de rota ou contrato).
