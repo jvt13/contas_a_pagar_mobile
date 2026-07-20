@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Modal_Nova_Conta from '../components/modal/modal-insert';
 import ModalConfig from '../components/modal/ModalConfig';
+import ModalImportarMensagem from '../components/modal/ModalImportarMensagem';
 import MenuHeader from '../components/MenuHeader';
 import useContas from '../hooks/useContas';
 import useCategorias from '../hooks/useCategorias';
@@ -244,6 +245,9 @@ export default function AppContent() {
   const [modalLimiteVisible, setModalLimiteVisible] = useState(false);
   const [modalGerenciarVisible, setModalGerenciarVisible] = useState(false);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+  const [modalImportarVisible, setModalImportarVisible] = useState(false);
+  const [initialValuesConta, setInitialValuesConta] = useState(null);
+  const [origemPreenchimento, setOrigemPreenchimento] = useState(null);
 
   const [sharedOrgKey, setSharedOrgKey] = useState('');
   const [contaSelecionada, setContaSelecionada] = useState(null);
@@ -370,18 +374,33 @@ export default function AppContent() {
 
   const editarConta = () => {
     setModalAcoesVisible(false);
+    setInitialValuesConta(null);
+    setOrigemPreenchimento(null);
     setModalNovaContaVisible(true);
+  };
+
+  const abrirModalImportarMensagem = () => {
+    setContaSelecionada(null);
+    setInitialValuesConta(null);
+    setOrigemPreenchimento(null);
+    setModalConfigVisible(false);
+    setModalImportarVisible(true);
   };
 
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom + 8, 12) }]}>
-      <MenuHeader onOpenConfig={() => setModalConfigVisible(true)} />
+      <MenuHeader
+        onOpenConfig={() => setModalConfigVisible(true)}
+        onImportarMensagem={abrirModalImportarMensagem}
+      />
 
       <TouchableOpacity
         style={styles.botaoNovaConta}
         activeOpacity={0.85}
         onPress={() => {
           setContaSelecionada(null);
+          setInitialValuesConta(null);
+          setOrigemPreenchimento(null);
           setModalNovaContaVisible(true);
         }}
       >
@@ -498,7 +517,11 @@ export default function AppContent() {
 
       <Modal_Nova_Conta
         visible={modalNovaContaVisible}
-        onClose={() => setModalNovaContaVisible(false)}
+        onClose={() => {
+          setModalNovaContaVisible(false);
+          setInitialValuesConta(null);
+          setOrigemPreenchimento(null);
+        }}
         onSuccess={(filtro) => {
           // filtro.mes/ano = competência de data_lancamento da nova conta (criação).
           // Edição não envia filtro: recarrega sempre, pois a conta pode estar na lista atual.
@@ -517,11 +540,19 @@ export default function AppContent() {
             loadContas();
           }
           setModalNovaContaVisible(false);
+          setInitialValuesConta(null);
+          setOrigemPreenchimento(null);
         }}
         ano={ano}
         mes={mes}
         contaSelecionada={contaSelecionada}
         setContaSelecionada={setContaSelecionada}
+        initialValues={initialValuesConta}
+        origemPreenchimento={origemPreenchimento}
+        onClearInitialValues={() => {
+          setInitialValuesConta(null);
+          setOrigemPreenchimento(null);
+        }}
       />
 
       <ModalConfig
@@ -536,9 +567,23 @@ export default function AppContent() {
           setModalGerenciarVisible(true);
           setModalConfigVisible(false);
         }}
+        abrirModalImportarMensagem={abrirModalImportarMensagem}
+        onImportarMensagem={abrirModalImportarMensagem}
         abrirModalContrlOrga={() => {
           setShareModalVisible(true);
           setModalConfigVisible(false);
+        }}
+      />
+
+      <ModalImportarMensagem
+        visible={modalImportarVisible}
+        onClose={() => setModalImportarVisible(false)}
+        onContinuar={(values) => {
+          setModalImportarVisible(false);
+          setContaSelecionada(null);
+          setInitialValuesConta(values || null);
+          setOrigemPreenchimento('mensagem_bancaria');
+          setModalNovaContaVisible(true);
         }}
       />
 

@@ -191,8 +191,18 @@ controle_contas/
 
 #### `src/utils/bancos.js`
 - **Responsabilidade**: Catálogo de bancos emissores (`BANCOS_CATALOGO`: nubank, inter, picpay, itau, santander, bradesco, bb, caixa, sicoob, sicredi, outro) com cor/sigla; `listarBancos`, `resolverBanco`, `resolverBancoOutro`, `inferirBancoDoNome` (para cartões legados sem `banco_slug`), `resolverBancoParaCartao`, `obterNomeExibicaoCartao`, `enriquecerCartaoComBanco`.
-- **Utilizado por**: `utils/cartao.js`, `utils/dashboardCartao.js`, `BancoBadge.js`, `BancoSelectorGrid.js`, `useCartaoManager`.
-- **Impacto de alteração**: Visual dos badges de banco e inferência de banco em cartões antigos.
+- **Utilizado por**: `utils/cartao.js`, `utils/dashboardCartao.js`, `utils/parserMensagemBancaria.js`, `utils/mapPreLancamentoParaInitialValues.js`, `BancoBadge.js`, `BancoSelectorGrid.js`, `useCartaoManager`.
+- **Impacto de alteração**: Visual dos badges de banco e inferência de banco em cartões antigos / importação de mensagem.
+
+#### `src/utils/parserMensagemBancaria.js`
+- **Responsabilidade**: Parser **local** de texto colado de mensagem bancária. Exporta `parseMensagemBancaria(texto)` → DTO `PreLancamento` (sem texto bruto). Extrai valor, banco, tipo/forma, data/hora, descrição e score de confiança. Sem I/O, sem API, sem persistência.
+- **Utilizado por**: `ModalImportarMensagem.js`.
+- **Impacto de alteração**: Qualidade das sugestões de importação; não afeta cadastro manual.
+
+#### `src/utils/mapPreLancamentoParaInitialValues.js`
+- **Responsabilidade**: Mapeia `PreLancamento` → `initialValues` do `Modal_Nova_Conta`. Match de cartão só se banco+forma com **um** cartão compatível e confiança alta; categoria sempre vazia no MVP; vencimento só para débito (hoje); `data_lancamento` = data da mensagem se válida.
+- **Utilizado por**: `ModalImportarMensagem.js`.
+- **Impacto de alteração**: Prefill do modal de nova conta a partir da importação.
 
 #### `src/utils/categorias.js`
 - **Responsabilidade**: Catálogo client-side de categorias: `CATEGORIAS_PADRAO` (15 ativas + 3 legadas: `fixa`, `variavel`, `renda`), `SUBCATEGORIAS_PADRAO`, `CORES_CATEGORIA`, `ICONES_CATEGORIA`, `slugifyCategoria`, `mesclarCategorias`/`mesclarSubcategorias` (custom sobrescreve padrão), `resolverCategoria`/`resolverSubcategoria` (com placeholder "desconhecida"), `formatarLabelCategoria[Completa]`, `filtrarCategorias`/`filtrarSubcategorias`, `isCategoriaRaiz`.
@@ -236,7 +246,7 @@ controle_contas/
 - **Saídas**: `{ form, setForm, valorBackend, setValorBackend, salvarConta }` (+ re-exporta `OPCOES_PARCELAS`). `salvarConta()` retorna `true` no sucesso; `false` em falha/cancelamento de escopo.
 - **Endpoints**: `POST /form_conta` (criar), `POST /form_conta/editar` (editar, com campo `escopo`).
 - **Dependências**: `utils/services`, `utils/authSession` (`STORAGE_KEYS`), `utils/util`, `utils/competenciaCartao` (`extrairMesAnoCompetencia`), `utils/tipoCartao`, `utils/parcelamento`.
-- **Regras embutidas**: campos obrigatórios (`tipo_cartao`, `nome`, `categoria`, `vencimento`, `valor`); débito em criação → sem parcelamento/recorrência, vencimento = hoje, `paga: true`; parcelado × recorrente mutuamente exclusivos; competência (`mes`/`ano` do payload) derivada do vencimento; edição de conta em grupo pergunta escopo (`apenas_esta`/`esta_e_futuras`/`todas`); `data_lancamento` = hoje; nome enviado sem sufixo ` n/m`.
+- **Regras embutidas**: campos obrigatórios (`tipo_cartao`, `nome`, `categoria`, `vencimento`, `valor`); débito em criação → sem parcelamento/recorrência, vencimento = hoje, `paga: true`; parcelado × recorrente mutuamente exclusivos; competência (`mes`/`ano` do payload) derivada do vencimento; edição de conta em grupo pergunta escopo (`apenas_esta`/`esta_e_futuras`/`todas`); `data_lancamento` = `form.data_lancamento` se válida (ex.: importação por mensagem), senão hoje; nome enviado sem sufixo ` n/m`.
 - **Utilizado por**: `components/modal/modal-insert.js` (único consumidor).
 
 ### `src/hooks/useCategorias.js` — `useCategorias()`
@@ -314,7 +324,7 @@ controle_contas/
 ### `src/screens/AppContent.js` (rota `Home`, header oculto) — **tela principal**
 - **Objetivo**: Painel do mês: 4 cards de resumo (Limite do mês, Total de contas, Contas pagas, Pendentes), card compacto de **uso do limite** (`UsoLimiteCard`, componente local), lista "Contas do período", criação/edição/exclusão, marcação de paga, Central de Controle. Única tela com **menu global** (`MenuHeader`).
 - **Hooks**: `useContas(ano, mes, sharedOrgKey)`, `useCategorias()`, `useCartaoManager` (importado como `useCartoes`; só `carregarCartoes()` no boot), `useSafeAreaInsets`.
-- **Componentes**: `MenuHeader`, `AppIcon`, `MonthNavigator`, `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` e `UsoLimiteCard` (locais).
+- **Componentes**: `MenuHeader`, `AppIcon`, `MonthNavigator`, `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalImportarMensagem`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` e `UsoLimiteCard` (locais).
 - **Utils diretos**: `deleteDados`, `formatCurrency`, `msgToast`, `obterMensagemErro`, `contaPertenceGrupoParcela`, `perguntarEscopoParcela`, `verificarAtualizacao`, AsyncStorage (`@userKeyShareId`).
 - **Fluxo de dados**:
   1. Filtros `ano`/`mes` (default = hoje) → `useContas` recarrega via `POST /contas_lancadas`.
@@ -412,21 +422,22 @@ controle_contas/
 | Componente | Responsabilidade | Props | Usado em |
 |---|---|---|---|
 | `CustomPicker.js` | Picker genérico (botão + modal com FlatList de opções `{label, value}`) | `selectedValue`, `onValueChange(value)`, `options`, `placeholder`, `style` | `modal-insert` (cartão) |
-| `ModalConfig.js` | "Central de Controle": botões Gerenciar limite / Criar novo cartão / Controle de Organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
+| `ModalConfig.js` | "Central de Controle": limite / cartão / **importar mensagem** / organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalImportarMensagem`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
+| `ModalImportarMensagem.js` | Cola texto bancário → parser local → prévia → `initialValues` para nova conta. Descarta texto ao continuar/fechar. | `visible`, `onClose`, `onContinuar(initialValues)` | `AppContent` |
 | `ModalContaAcoes.js` | Modal de long-press na conta: mostra nome, label de parcela/recorrência + status, botões Editar/Excluir | `visible`, `onClose`, `contaSelecionada`, `onEditar`, `onExcluir` | `AppContent` |
 | `ModalGerenciarCartao.js` | CRUD de cartões: banco (grid), apelido, tipo (chips crédito/débito), dias de vencimento/fechamento e limite (só crédito), lista com Editar/Excluir. Usa `useCartaoManager` | `visible`, `onClose` | `AppContent` |
 | `ModalGerenciarLimite.js` | Definição do limite mensal: mês (Picker 0-based, enviado +1), ano (lista `anos` ou novo ano digitado), valor com máscara. Padrão: `obterIdLimite` → update ou insert; depois chama `loadContas()` | `visible`, `onClose`, `anos`, `loadContas` (prop `onSalvarLimite` recebida mas **não usada**) | `AppContent` |
 | `ModalShareOrganization.js` | Conexão a organização compartilhada: `POST /user/organization/share { key }` → `saveSession({ key_share, key_share_id })` → `onSave(key_share_id)` | `visible`, `onClose`, `existingKey`, `onSave(keyShareId)` | `AppContent` |
-| `modal-insert.js` (`Modal_Nova_Conta`) | **Modal de criação/edição de conta** — ver fluxo detalhado abaixo | `visible`, `onClose`, `onSuccess`, `ano`, `mes`, `contaSelecionada`, `setContaSelecionada` | `AppContent` |
+| `modal-insert.js` (`Modal_Nova_Conta`) | **Modal de criação/edição de conta** — ver fluxo detalhado abaixo | `visible`, `onClose`, `onSuccess`, `ano`, `mes`, `contaSelecionada`, `setContaSelecionada`, `initialValues?`, `origemPreenchimento?`, `onClearInitialValues?` | `AppContent` |
 
 #### Fluxo detalhado do `modal-insert.js`
-1. Ao abrir (`visible`): se `contaSelecionada` existe → modo **edição** (preenche `form` com os dados, removendo sufixo de parcela do nome); sempre chama `carregarCartoes()`.
+1. Ao abrir (`visible`): prioridade **edição** (`contaSelecionada`) > **importação** (`initialValues`) > formulário vazio; sempre chama `carregarCartoes()`.
 2. **Seleção de cartão** (`trataSelect`): ao escolher um cartão, sugere o vencimento automaticamente — débito: data de hoje; crédito: `obterVencimentoSugeridoPorCartao` (regra de fechamento/fatura); fallback: `GET /get_cartao_id/:id` (campo `vencimento_conta` do backend). O usuário pode editar manualmente (input `dd/mm/aaaa` + DateTimePicker).
-3. **Campos**: cartão, nome ("Tipo de gasto"), categoria (`CategorySelectorField`), subcategoria opcional (`SubcategorySelectorField`), vencimento, valor (máscara `formatarMoeda` → display + backend).
+3. **Campos**: cartão, nome ("Tipo de gasto"), categoria (`CategorySelectorField`), subcategoria opcional (`SubcategorySelectorField`), vencimento, valor (máscara `formatarMoeda` → display + backend). Importação pode pré-preencher nome/valor/cartão/`data_lancamento` (campo interno, sem UI).
 4. **Categoria legado `fixa`** ativa `recorrente` automaticamente (`isCategoriaFixa`).
 5. **Parcelado** (chips 2/3/6/12/18/24x ou custom 1–36) e **Recorrente** (chips 3/6/12/24 meses ou custom 1–36) são mutuamente exclusivos (marcar um desliga o outro) e só aparecem em criação com cartão de crédito.
 6. Em edição de conta de grupo, exibe apenas o texto informativo "Parcela n/m" ou "Recorrência n/m" (a alteração de escopo é perguntada pelo `useNovaConta` ao salvar).
-7. **Salvar** → `salvarConta()` (`useNovaConta`) → sucesso → reseta formulário, limpa `contaSelecionada` e fecha.
+7. **Salvar** → `salvarConta()` (`useNovaConta`) → sucesso → reseta formulário, limpa `contaSelecionada`/`initialValues` e fecha.
 
 ---
 
@@ -551,7 +562,7 @@ Consumidores: `conexao.js` (pool da API), `estrutura.js` (CREATE DATABASE), `scr
 ## 9. Fluxos Críticos
 
 ### Criação de Conta
-1. **Tela origem**: `AppContent.js` (Home) → botão "+ Nova conta" (limpa `contaSelecionada`) → abre `Modal_Nova_Conta` (`modal-insert.js`).
+1. **Tela origem**: `AppContent.js` (Home) → botão "+ Nova conta" (limpa `contaSelecionada`/`initialValues`) → abre `Modal_Nova_Conta` (`modal-insert.js`). Alternativa: Central de Controle → **Importar mensagem** → `ModalImportarMensagem` → Continuar → `Modal_Nova_Conta` com `initialValues`.
 2. Modal carrega cartões (`useCartaoManager.carregarCartoes` → `GET /get_cartoes`).
 3. Usuário escolhe cartão → vencimento sugerido automaticamente (`utils/competenciaCartao` ou `GET /get_cartao_id/:id`).
 4. **Hook acionado**: `useNovaConta.salvarConta()` — valida obrigatórios; débito → vencimento = hoje, `paga: true`, sem parcela/recorrência; calcula competência via `extrairMesAnoCompetencia(vencimento)`.
@@ -752,6 +763,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-07-19 | Importar mensagem bancária (MVP — texto colado, parser local) | `parserMensagemBancaria.js`, `mapPreLancamentoParaInitialValues.js`, `ModalImportarMensagem.js`, `ModalConfig.js`, `modal-insert.js`, `useNovaConta.js`, `AppContent.js`, docs |
 | 2026-07-19 | Criação de `docs/APP_OVERVIEW.md` (visão geral do produto) + consolidação da documentação | `docs/APP_OVERVIEW.md`, `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` |
 | 2026-06-27 | Modernização visual consolidada das telas financeiras (padrão `#F4F8FF` + cards brancos + safe area) — sem mudança de contrato | `AppContent.js`, `ContasAPagar.js`, `ContasPagas.js`, `DashboardFinanceiro.js`, `DashboardCartoes.js`, `RelatorioCategorias.js`, `MetasFinanceiras.js`, `FechamentoMensal.js`, `ModalConfig.js` |
 | 2026-06-21 | Navegador mensal `MonthNavigator` (substitui pickers ano/mês) | `src/components/MonthNavigator.js`, 7 telas financeiras, `docs/PROJECT_STRUCTURE.md` |

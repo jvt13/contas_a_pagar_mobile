@@ -116,6 +116,7 @@
 8. **Não** commitar `.env` nem credenciais.
 9. **Não** adicionar dependências novas sem justificativa; preferir o que já existe no `package.json`.
 10. **Não** duplicar regras de negócio que já existem em `utils/` (parcelamento, competência, tipo de cartão, categorias).
+11. **Importação de mensagem bancária**: processar texto **somente no aparelho**; **não** enviar texto bruto ao backend; **não** persistir texto bruto (AsyncStorage/banco); **não** salvar conta automaticamente — o save final continua em `useNovaConta.salvarConta()`. **Não** adicionar SMS automático, Notification Listener, share intent ou permissões nativas sem solicitação explícita de produto.
 
 ---
 

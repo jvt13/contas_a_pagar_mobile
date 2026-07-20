@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AppIcon from '../AppIcon';
 import CustomPicker from './CustomPicker';
 
-import { formatarMoeda, validarVencimentoConta, formatarDataBR } from '../../utils/util';
+import { formatarMoeda, formatarDataBR } from '../../utils/util';
 import {
   obterVencimentoSugeridoPorCartao,
   parseDataBRparaDate,
@@ -27,6 +27,9 @@ export default function Modal_Nova_Conta({
   mes,
   contaSelecionada,
   setContaSelecionada,
+  initialValues = null,
+  origemPreenchimento = null,
+  onClearInitialValues = null,
 }) {
   const [editarConta, setEditarConta] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -52,6 +55,28 @@ export default function Modal_Nova_Conta({
     })),
   ];
 
+  const formVazio = () => ({
+    tipo_cartao: '',
+    nome: '',
+    categoria: '',
+    subcategoria: '',
+    vencimento: '',
+    valor: '',
+    data_lancamento: '',
+    conta_user: '',
+    organization: '',
+    parcelado: false,
+    total_parcelas: 12,
+    recorrente: false,
+    total_recorrencias: 6,
+    grupo_parcelamento: null,
+    parcela_atual: null,
+    total_parcelas_grupo: null,
+    grupo_recorrencia: null,
+    recorrencia_atual: null,
+    total_recorrencias_grupo: null,
+  });
+
   const sugerirVencimento = (cartao) => {
     if (!cartao) {
       return null;
@@ -64,6 +89,35 @@ export default function Modal_Nova_Conta({
       ano,
       dataReferencia: new Date(),
     });
+  };
+
+  const aplicarInitialValues = () => {
+    if (!initialValues || typeof initialValues !== 'object') {
+      return;
+    }
+
+    setEditarConta(false);
+    setForm({
+      ...formVazio(),
+      tipo_cartao: initialValues.tipo_cartao != null ? String(initialValues.tipo_cartao) : '',
+      nome: initialValues.nome != null ? String(initialValues.nome) : '',
+      categoria: initialValues.categoria != null ? String(initialValues.categoria) : '',
+      subcategoria: initialValues.subcategoria != null ? String(initialValues.subcategoria) : '',
+      vencimento: initialValues.vencimento != null ? String(initialValues.vencimento) : '',
+      valor: initialValues.valor != null ? String(initialValues.valor) : '',
+      data_lancamento:
+        initialValues.data_lancamento != null ? String(initialValues.data_lancamento) : '',
+      parcelado: Boolean(initialValues.parcelado),
+      total_parcelas: initialValues.total_parcelas || 12,
+      recorrente: Boolean(initialValues.recorrente),
+      total_recorrencias: initialValues.total_recorrencias || 6,
+    });
+
+    const backend =
+      initialValues.valorBackend != null && initialValues.valorBackend !== ''
+        ? String(initialValues.valorBackend)
+        : '';
+    setValorBackend({ valor: backend });
   };
 
   const setValoresSelecionados = () => {
@@ -81,6 +135,7 @@ export default function Modal_Nova_Conta({
       subcategoria: contaSelecionada.subcategoria || '',
       vencimento: contaSelecionada.vencimento || '',
       valor: contaSelecionada.valor?.toString() || '',
+      data_lancamento: '',
       conta_user: contaSelecionada.conta_user || '',
       organization: contaSelecionada.organization || '',
       parcelado: false,
@@ -98,29 +153,11 @@ export default function Modal_Nova_Conta({
   };
 
   const reseteForms_onClose = () => {
-    setForm({
-      tipo_cartao: '',
-      nome: '',
-      categoria: '',
-      subcategoria: '',
-      vencimento: '',
-      valor: '',
-      conta_user: '',
-      organization: '',
-      parcelado: false,
-      total_parcelas: 12,
-      recorrente: false,
-      total_recorrencias: 6,
-      grupo_parcelamento: null,
-      parcela_atual: null,
-      total_parcelas_grupo: null,
-      grupo_recorrencia: null,
-      recorrencia_atual: null,
-      total_recorrencias_grupo: null,
-    });
+    setForm(formVazio());
     setValorBackend({ valor: '' });
     setContaSelecionada(null);
     setEditarConta(false);
+    onClearInitialValues?.();
     onClose();
   };
 
@@ -129,7 +166,17 @@ export default function Modal_Nova_Conta({
       return;
     }
 
-    setValoresSelecionados();
+    // Prioridade: edição (contaSelecionada) > importação (initialValues) > formulário vazio
+    if (contaSelecionada) {
+      setValoresSelecionados();
+    } else if (initialValues) {
+      aplicarInitialValues();
+    } else {
+      setEditarConta(false);
+      setForm(formVazio());
+      setValorBackend({ valor: '' });
+    }
+
     carregarCartoes();
   }, [visible]);
 
@@ -229,6 +276,14 @@ export default function Modal_Nova_Conta({
       <View style={styles.modalContainer}>
         <View style={styles.modalContent}>
           <Text style={styles.titulo}>{editarConta ? 'Editar Conta' : 'Adicionar Nova Conta'}</Text>
+
+          {origemPreenchimento === 'mensagem_bancaria' && !editarConta ? (
+            <View style={styles.avisoImportacao}>
+              <Text style={styles.avisoImportacaoTexto}>
+                Pré-preenchido a partir de mensagem importada. Revise os campos antes de salvar.
+              </Text>
+            </View>
+          ) : null}
 
           <Text style={styles.label}>Cartão:</Text>
           <CustomPicker
@@ -575,6 +630,19 @@ const styles = StyleSheet.create({
   avisoDebitoTexto: {
     fontSize: 13,
     color: '#1E8E5A',
+    fontWeight: '600',
+  },
+  avisoImportacao: {
+    backgroundColor: '#FFF3E8',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F5D9B8',
+  },
+  avisoImportacaoTexto: {
+    fontSize: 13,
+    color: '#C47A1A',
     fontWeight: '600',
   },
   row: {

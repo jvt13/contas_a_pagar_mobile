@@ -25,24 +25,31 @@ export default function useCartaoManager() {
       const keyShareId = await AsyncStorage.getItem('@userKeyShareId');
       if (!keyShareId) {
         Alert.alert('Erro', 'Chave de organização não encontrada');
-        return;
+        return [];
       }
 
       const res = await getDados(`/get_cartoes?orgaId=${keyShareId}`);
       if (res?.success && Array.isArray(res.data)) {
         setCartoes(res.data);
-      } else if (Array.isArray(res?.data)) {
-        setCartoes(res.data);
-      } else if (Array.isArray(res?.result)) {
-        setCartoes(res.result);
-      } else {
-        setCartoes([]);
-        if (res?.success === false && res?.mensagem) {
-          console.warn('[useCartaoManager] carregarCartoes:', res.mensagem);
-        }
+        return res.data;
       }
+      if (Array.isArray(res?.data)) {
+        setCartoes(res.data);
+        return res.data;
+      }
+      if (Array.isArray(res?.result)) {
+        setCartoes(res.result);
+        return res.result;
+      }
+
+      setCartoes([]);
+      if (res?.success === false && res?.mensagem) {
+        console.warn('[useCartaoManager] carregarCartoes:', res.mensagem);
+      }
+      return [];
     } catch (error) {
       Alert.alert('Erro', 'Falha ao conectar com servidor');
+      return [];
     }
   };
 

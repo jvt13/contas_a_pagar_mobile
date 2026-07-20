@@ -17,6 +17,7 @@ Aplicativo mobile (Android, React Native/Expo) de **controle de contas pessoais*
 
 - **Login / cadastro / organização compartilhada** (`Login`, `Register`, `ModalShareOrganization`; sessão local via AsyncStorage).
 - **Cadastro de contas** (despesas) com cartão, categoria/subcategoria, vencimento e valor (`Modal_Nova_Conta`).
+- **Importar mensagem bancária** (MVP) — cola texto de SMS/notificação na Central de Controle; parser **local** sugere pré-lançamento; usuário revisa e salva pelo fluxo atual. Sem SMS automático, sem Notification Listener, sem permissões novas; texto bruto não vai ao servidor nem é persistido.
 - **Contas a Pagar** — relatório de pendentes do mês (eixo vencimento).
 - **Contas Pagas** — relatório de pagas do mês (eixo vencimento).
 - **Cartão de crédito** — com dia de fechamento (`dia_util`), dia de vencimento e limite; **competência financeira**: compra até o fechamento entra na fatura corrente; se dia de vencimento > dia de fechamento a fatura é paga no mesmo mês, senão no mês seguinte.
@@ -56,7 +57,7 @@ Todas as telas financeiras foram modernizadas (jun/2026) seguindo o mesmo padrã
 
 - **Home não tem header nativo** (`headerShown: false`); usa o **`MenuHeader`** (menu hamburger global + avatar/saudação + logout) — único lugar do app com menu global.
 - **Telas secundárias usam header nativo do Stack** (fundo azul `#1E4DB7`, botão Voltar, título), configurado em `stackScreenOptions` no `App.js`. Elas **não** usam `MenuHeader`.
-- **Central de Controle** (`ModalConfig`: gerenciar limite, criar cartão, controle de organização) é acessível **apenas pela Home**. O modal filtra opções por callbacks válidos; `DashboardCartoes` **não** usa `ModalConfig`.
+- **Central de Controle** (`ModalConfig`: gerenciar limite, criar cartão, **importar mensagem**, controle de organização) é acessível **apenas pela Home**. O modal filtra opções por callbacks válidos; `DashboardCartoes` **não** usa `ModalConfig`.
 
 ### `MonthNavigator` (navegação mensal padronizada)
 
@@ -155,7 +156,9 @@ Funcionalidades registradas para versões futuras — **nenhuma delas deve ser i
 - Dashboard Cartões por mês/competência (hoje é snapshot operacional);
 - Histórico de faturas;
 - Notificações inteligentes;
-- Detecção opcional de SMS/notificações bancárias para sugerir lançamento automático — **apenas ideia futura**: não implementar agora, não adicionar permissões, não instalar dependências, não alterar `app.json`/`package.json`;
+- Share intent (compartilhar texto do Android para o app) para importar mensagem;
+- Detecção opcional de SMS/notificações bancárias para sugerir lançamento — **apenas ideia futura**: não implementar agora, não adicionar permissões, não instalar dependências, não alterar `app.json`/`package.json`;
+- Sugestão automática de categoria a partir da mensagem;
 - Outras melhorias funcionais futuras.
 
 ---

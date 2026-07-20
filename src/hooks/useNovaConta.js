@@ -30,6 +30,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes =
     subcategoria: '',
     vencimento: '',
     valor: '',
+    data_lancamento: '',
     conta_user: '',
     organization: '',
     parcelado: false,
@@ -120,8 +121,23 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes =
     }
 
     const hoje = new Date();
-    const mesLancamento = hoje.getMonth();
-    const anoLancamento = hoje.getFullYear();
+
+    // Importação por mensagem pode sugerir data_lancamento; cadastro manual permanece = hoje.
+    const dataLancamentoInformada = String(form.data_lancamento || '').trim();
+    const dataLancamentoFinal =
+      !editarConta && dataLancamentoInformada && validarVencimentoConta(dataLancamentoInformada)
+        ? dataLancamentoInformada
+        : formatarDataBRHoje();
+
+    const partesLancamento = dataLancamentoFinal.split('/');
+    const mesLancamento =
+      partesLancamento.length === 3 && !Number.isNaN(parseInt(partesLancamento[1], 10))
+        ? parseInt(partesLancamento[1], 10) - 1
+        : hoje.getMonth();
+    const anoLancamento =
+      partesLancamento.length === 3 && !Number.isNaN(parseInt(partesLancamento[2], 10))
+        ? parseInt(partesLancamento[2], 10)
+        : hoje.getFullYear();
 
     const payload = {
       ...form,
@@ -130,7 +146,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes =
       ano: anoCompetencia,
       mes: mesCompetencia,
       vencimento: vencimentoNormalizado,
-      data_lancamento: formatarDataBRHoje(),
+      data_lancamento: dataLancamentoFinal,
       valor: valorBackend.valor,
       conta_user: userId,
       organization,
@@ -199,6 +215,7 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes =
       subcategoria: '',
       vencimento: '',
       valor: '',
+      data_lancamento: '',
       conta_user: '',
       organization: '',
       parcelado: false,

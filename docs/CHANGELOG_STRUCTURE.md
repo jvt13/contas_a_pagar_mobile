@@ -52,6 +52,22 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-07-19 — Importar mensagem bancária (MVP — texto colado)
+
+- **Tipo**: Novo util + Novo componente.
+- **Descrição**: MVP de importação por mensagem colada: parser local (`parseMensagemBancaria`) gera `PreLancamento` (sem texto bruto); mapper produz `initialValues`; `ModalImportarMensagem` na Central de Controle; `Modal_Nova_Conta` aceita `initialValues`/`origemPreenchimento`; save continua exclusivo em `useNovaConta.salvarConta()`. Sem SMS automático, Notification Listener, permissões, deps ou backend. Texto bruto só em memória do modal de importação. Categoria não é sugerida; cartão só com match único e confiança alta. `data_lancamento` usa a data da mensagem quando válida; caso contrário permanece hoje.
+- **Arquivos impactados**:
+  - `src/utils/parserMensagemBancaria.js` (criado)
+  - `src/utils/mapPreLancamentoParaInitialValues.js` (criado)
+  - `src/components/modal/ModalImportarMensagem.js` (criado)
+  - `src/components/modal/ModalConfig.js`, `src/components/modal/modal-insert.js`, `src/hooks/useNovaConta.js`, `src/screens/AppContent.js` (alterados)
+  - `docs/APP_OVERVIEW.md`, `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: Central de Controle ganha opção “Importar mensagem”; cadastro/edição manuais preservados.
+- **Documentação atualizada**: `APP_OVERVIEW.md` §2, §3, §6; `PROJECT_STRUCTURE.md` §3–§6, §14; `AI_DEVELOPMENT_RULES.md` §6.
+
+---
+
 ### 2026-07-19 — Criação de `docs/APP_OVERVIEW.md` e consolidação da documentação
 
 - **Tipo**: Novo arquivo (documentação).

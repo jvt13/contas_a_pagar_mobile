@@ -15,7 +15,7 @@ import { msgToast } from '../utils/util';
 import { clearSession, STORAGE_KEYS } from '../utils/authSession';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export default function MenuHeader({ onOpenConfig }) {
+export default function MenuHeader({ onOpenConfig, onImportarMensagem }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [userName, setUserName] = useState('');
   const navigation = useNavigation();
@@ -51,6 +51,14 @@ export default function MenuHeader({ onOpenConfig }) {
     }
     closeMenu();
     onOpenConfig();
+  };
+
+  const handleImportarMensagem = () => {
+    if (typeof onImportarMensagem !== 'function') {
+      return;
+    }
+    closeMenu();
+    onImportarMensagem();
   };
 
   function getAvatarColor(firstLetter) {
@@ -133,6 +141,13 @@ export default function MenuHeader({ onOpenConfig }) {
             <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} icon="time-outline" />
             {typeof onOpenConfig === 'function' ? (
               <MenuItem text="Central de Controle" onPress={handleOpenModal} icon="settings-outline" />
+            ) : null}
+            {typeof onImportarMensagem === 'function' ? (
+              <MenuItem
+                text="Importar mensagem"
+                onPress={handleImportarMensagem}
+                icon="chatbox-ellipses-outline"
+              />
             ) : null}
             <MenuItem text="Sair" onPress={logout} icon="log-out-outline" />
           </Animated.View>

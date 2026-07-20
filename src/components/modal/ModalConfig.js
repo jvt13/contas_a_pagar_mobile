@@ -5,10 +5,20 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
+  ScrollView,
 } from 'react-native';
 import AppIcon, { ModalCloseButton } from '../AppIcon';
 
 const OPCOES = [
+  {
+    key: 'importar',
+    titulo: 'Importar mensagem',
+    descricao: 'Cole uma mensagem do banco para sugerir um lançamento.',
+    icon: 'chatbox-ellipses-outline',
+    iconBg: '#FFF3E8',
+    iconColor: '#C47A1A',
+    onPressKey: 'abrirModalImportarMensagem',
+  },
   {
     key: 'limite',
     titulo: 'Gerenciar limite',
@@ -60,11 +70,22 @@ export default function ModalConfig({
   abrirModalLimite,
   abrirModalGerenciar,
   abrirModalContrlOrga,
+  abrirModalImportarMensagem,
+  onImportarMensagem,
 }) {
+  // Aceita alias onImportarMensagem (mesmo handler) para não esconder a opção por nome de prop.
+  const handlerImportar =
+    typeof onImportarMensagem === 'function'
+      ? onImportarMensagem
+      : typeof abrirModalImportarMensagem === 'function'
+        ? abrirModalImportarMensagem
+        : null;
+
   const handlers = {
     abrirModalLimite,
     abrirModalGerenciar,
     abrirModalContrlOrga,
+    abrirModalImportarMensagem: handlerImportar,
   };
 
   const opcoesDisponiveis = OPCOES.filter(
@@ -90,7 +111,12 @@ export default function ModalConfig({
           <View style={styles.divisor} />
 
           {opcoesDisponiveis.length > 0 ? (
-            <View style={styles.opcoesLista}>
+            <ScrollView
+              style={styles.opcoesScroll}
+              contentContainerStyle={styles.opcoesLista}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
               {opcoesDisponiveis.map((opcao) => (
                 <OpcaoCard
                   key={opcao.key}
@@ -102,7 +128,7 @@ export default function ModalConfig({
                   onPress={() => handlers[opcao.onPressKey]()}
                 />
               ))}
-            </View>
+            </ScrollView>
           ) : (
             <View style={styles.semOpcoesWrap}>
               <AppIcon name="information-circle-outline" size={24} color="#8CA0B3" />
@@ -126,6 +152,7 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '85%',
     backgroundColor: '#F8FAFD',
     paddingHorizontal: 20,
     paddingTop: 22,
@@ -178,8 +205,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#D9E4F2',
     marginBottom: 16,
   },
+  opcoesScroll: {
+    flexGrow: 0,
+  },
   opcoesLista: {
     gap: 10,
+    paddingBottom: 4,
   },
   opcaoCard: {
     flexDirection: 'row',
