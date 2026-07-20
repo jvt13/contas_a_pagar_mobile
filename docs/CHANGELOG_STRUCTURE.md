@@ -52,6 +52,57 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-07-19 — Criação de `docs/APP_OVERVIEW.md` e consolidação da documentação
+
+- **Tipo**: Novo arquivo (documentação).
+- **Descrição**: Criado `docs/APP_OVERVIEW.md` como referência principal do **estado atual do produto**: funcionalidades, padrão visual/UX, `MonthNavigator`, regras financeiras sensíveis, decisões de arquitetura/produto (incluindo Dashboard Cartões sem filtro mensal), backlog futuro e informações de build/deploy (APK `production-apk` 1.0.8, versionCode 10, API `https://api-contas.srv-jvt.com`). Documentação existente atualizada para refletir o monorepo, a Home atual (`UsoLimiteCard`) e a correção do antigo risco de TDZ em `modal-insert.js`.
+- **Arquivos impactados**:
+  - `docs/APP_OVERVIEW.md` (criado)
+  - `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: nenhum (nenhum arquivo de código alterado).
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §1, §2, §5, §12, §14; `AI_DEVELOPMENT_RULES.md` §1, §5.
+
+---
+
+### 2026-06-22 a 2026-06-27 — Modernização visual das telas financeiras (consolidada)
+
+- **Tipo**: Outro (UI/UX — sem mudança de contrato, rota ou endpoint).
+- **Descrição**: Modernização visual de Home, Contas a Pagar, Contas Pagas, Dashboard Financeiro, Dashboard Cartões, Relatório Categoria/Subcategoria, Metas Financeiras, Fechamento Mensal e Central de Controle (`ModalConfig`), seguindo padrão único: fundo `#F4F8FF`, cards brancos com borda `#E3EBF5` e `borderRadius: 14`, azul `#1E4DB7`, verde `#1E8E5A` (pago/positivo), laranja `#C47A1A` (pendente), vermelho `#D64545` (estouro), estados vazios com ícone + texto, safe area via `useSafeAreaInsets`. Home ganhou `UsoLimiteCard` (uso do limite mensal) e teve título redundante removido. Metas passou a comunicar explicitamente que as metas são **mensais recorrentes**. Nenhum hook, endpoint ou regra financeira alterado.
+- **Arquivos impactados**:
+  - `src/screens/AppContent.js`, `ContasAPagar.js`, `ContasPagas.js`, `DashboardFinanceiro.js`, `DashboardCartoes.js`, `RelatorioCategorias.js`, `MetasFinanceiras.js`, `FechamentoMensal.js` (alterados — visual)
+  - `src/components/modal/ModalConfig.js` (alterado — visual + filtro de opções por callbacks válidos)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: apenas visual; comportamentos e contratos preservados.
+- **Documentação atualizada**: `docs/APP_OVERVIEW.md` §3; `PROJECT_STRUCTURE.md` §5, §14.
+
+---
+
+### 2026-06-20 — Backend `api-contas-a-pagar` integrado ao monorepo
+
+- **Tipo**: Renomeação/Movimentação (integração de repositório).
+- **Descrição**: O backend REST (Node.js/Express 5 + PostgreSQL) passou a viver dentro deste repositório em `api-contas-a-pagar/`, formando um monorepo. O VPS de produção continua rodando o backend a partir do repositório separado (`github.com/jvt13/contas_a_pagar`) — ver `api-contas-a-pagar/DEPLOY_VPS.md`.
+- **Arquivos impactados**:
+  - `api-contas-a-pagar/` (pasta completa adicionada)
+  - `.gitignore` (ignora `.env` e `api-contas-a-pagar/backups/`)
+- **Endpoints afetados**: nenhum (mesma API).
+- **Impacto para consumidores**: nenhum no app; desenvolvimento local passa a ter backend no mesmo repositório.
+- **Documentação atualizada**: `PROJECT_STRUCTURE.md` §1, §2, §8, §14.
+
+---
+
+### 2026-06-10 — Release APK 1.0.8 (perfil `production-apk`)
+
+- **Tipo**: Outro (release/build — sem mudança estrutural de código).
+- **Descrição**: Build APK Android via EAS (perfil `production-apk`, distribuição interna), versão `1.0.8`, `versionCode` 10, apontando para a API de produção `https://api-contas.srv-jvt.com`. O backend **não** foi atualizado neste build — as mudanças foram exclusivamente mobile/UI.
+- **Arquivos impactados**:
+  - `app.json` (alterado — `version` 1.0.8, `versionCode` 10)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: nova versão distribuída para teste interno.
+- **Documentação atualizada**: `docs/APP_OVERVIEW.md` §7.
+
+---
+
 ### 2026-06-21 — Navegador mensal `MonthNavigator`
 
 - **Tipo**: Novo componente + Outro (UX — filtro mês/ano).

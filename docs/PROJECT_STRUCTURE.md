@@ -2,8 +2,9 @@
 
 > Documentação técnica oficial da arquitetura do projeto **OrganizeContas** (`controle_contas`).
 > Deve ser mantida atualizada sempre que houver mudanças estruturais relevantes (ver seção 14).
+> Para visão geral do **produto** (funcionalidades, padrão visual/UX, decisões, backlog futuro, build/deploy), ver `docs/APP_OVERVIEW.md`.
 >
-> Última atualização: 11/06/2026 (gerada a partir da análise do código real).
+> Última atualização: 19/07/2026 (gerada a partir da análise do código real).
 
 ---
 
@@ -25,15 +26,16 @@ Aplicativo mobile de **controle de contas pessoais**: lançamento de contas (des
 | @react-native-community/datetimepicker | 8.4.4 | Date picker do modal de conta |
 | @react-native-picker/picker | 2.11.1 | Picker (ModalGerenciarLimite) |
 | react-native-gesture-handler / reanimated / worklets | ~2.28 / ~4.1 / 0.5.1 | Gestos e animações |
+| react-native-safe-area-context | ~5.6.0 | Safe area nas telas (`useSafeAreaInsets`) |
 | react-native-version-check | ^3.5.0 | Aviso de atualização na Play Store |
 | expo-build-properties | ~1.0.10 | `usesCleartextTraffic: true` (HTTP em dev) |
 | dotenv (dev) | — | Carrega `.env` no `app.config.js` |
 
 ### Arquitetura geral
 
-- **Front-end only**: este repositório contém apenas o app React Native. Os dados ficam em um **backend REST próprio** (`api-contas-a-pagar`) — não há SQLite/Realm local.
-  - Dev: `http://192.168.15.100:3100` (via `.env` → `EXPO_PUBLIC_API_URL`).
-  - Produção: `https://api-contas.srv-jvt.com` (perfis EAS em `eas.json`).
+- **Monorepo**: o app React Native fica na raiz e o **backend REST próprio** (Node.js/Express 5 + PostgreSQL) fica em `api-contas-a-pagar/` — não há SQLite/Realm local no app.
+  - Dev: `http://192.168.15.100:3100` (via `.env` → `EXPO_PUBLIC_API_URL`; backend local na porta 3100).
+  - Produção: `https://api-contas.srv-jvt.com` (perfis EAS em `eas.json`). O VPS roda o backend a partir de **repositório separado** (`github.com/jvt13/contas_a_pagar` — ver `api-contas-a-pagar/DEPLOY_VPS.md`).
 - **Sem Redux / sem Context próprio**: o "estado global" é o `AsyncStorage` (sessão, organização, categorias custom) + chamadas REST. Cada tela usa hooks customizados que encapsulam os fetches.
 - **Camadas**: `Screen → Hook → utils/services.js (cliente HTTP) → API REST (backend = banco de dados)`.
 - **Sessão**: `userId` + `userKeyShareId` (organização) no AsyncStorage. O backend não emite JWT real; em 401 o app limpa a sessão e reseta a navegação para `Login` (handler registrado em `App.js`).
@@ -76,7 +78,8 @@ controle_contas/
 ├── package.json            # Dependências e scripts (build, bump de versão)
 ├── *.bat                   # Scripts Windows de build (APK/AAB via EAS)
 ├── assets/                 # Imagens e ícones do app
-├── docs/                   # Documentação (este arquivo)
+├── docs/                   # Documentação (este arquivo, APP_OVERVIEW, regras de IA, changelog, backup)
+├── api-contas-a-pagar/     # Backend REST (Node.js/Express 5 + PostgreSQL) — monorepo
 └── src/
     ├── config/             # Configuração de ambiente/API
     ├── screens/            # Telas (rotas do stack)
@@ -309,9 +312,9 @@ controle_contas/
 - **Fluxo de dados**: valida obrigatórios + senha ≥ 4 caracteres → `POST /auth/register { name, userName, email, password }` (`userName` cai para parte local do e-mail) → `navigation.replace('Login')`.
 
 ### `src/screens/AppContent.js` (rota `Home`, header oculto) — **tela principal**
-- **Objetivo**: Painel do mês: cards de resumo (limite, total, pagas, pendentes), tabela de contas, criação/edição/exclusão, marcação de paga, Central de Controle. Única tela com **menu global** (`MenuHeader`).
-- **Hooks**: `useContas(ano, mes, sharedOrgKey)`, `useCategorias()`, `useCartaoManager` (importado como `useCartoes`; só `carregarCartoes()` no boot).
-- **Componentes**: `MenuHeader`, `AppIcon`, `MonthNavigator`, `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` (local).
+- **Objetivo**: Painel do mês: 4 cards de resumo (Limite do mês, Total de contas, Contas pagas, Pendentes), card compacto de **uso do limite** (`UsoLimiteCard`, componente local), lista "Contas do período", criação/edição/exclusão, marcação de paga, Central de Controle. Única tela com **menu global** (`MenuHeader`).
+- **Hooks**: `useContas(ano, mes, sharedOrgKey)`, `useCategorias()`, `useCartaoManager` (importado como `useCartoes`; só `carregarCartoes()` no boot), `useSafeAreaInsets`.
+- **Componentes**: `MenuHeader`, `AppIcon`, `MonthNavigator`, `CategoriaLabel`, `Modal_Nova_Conta` (modal-insert), `ModalConfig`, `ModalGerenciarCartao`, `ModalGerenciarLimite`, `ModalContaAcoes`, `ModalShareOrganization`, `CustomCheckBox` e `UsoLimiteCard` (locais).
 - **Utils diretos**: `deleteDados`, `formatCurrency`, `msgToast`, `obterMensagemErro`, `contaPertenceGrupoParcela`, `perguntarEscopoParcela`, `verificarAtualizacao`, AsyncStorage (`@userKeyShareId`).
 - **Fluxo de dados**:
   1. Filtros `ano`/`mes` (default = hoje) → `useContas` recarrega via `POST /contas_lancadas`.
@@ -333,7 +336,7 @@ controle_contas/
 - **Hooks/Componentes**: iguais a `ContasAPagar`.
 
 ### `src/screens/DashboardCartoes.js` (rota `DashboardCartoes`, header nativo do Stack)
-- **Objetivo**: Painel agregado por cartão (limite, utilizado, fatura atual, próximos vencimento/fechamento; débito: gastos do mês).
+- **Objetivo**: Painel agregado por cartão (limite, utilizado, fatura atual, próximos vencimento/fechamento; débito: gastos do mês). **Decisão de produto**: é a visão **operacional atual** (snapshot do momento) — **não usa `MonthNavigator` nem filtro de mês/ano**; visão por mês/competência ficou como backlog futuro (ver `docs/APP_OVERVIEW.md` §6).
 - **Hooks**: `useDashboardCartoes()`, `useFocusEffect` (recarrega a cada foco).
 - **Componentes**: `CartaoDashboardCard` (um por resumo).
 - **Fluxo de dados**: ao focar → `carregar()` → `GET /dashboard/cartoes?orgaId=` (com fallback client-side). Pull-to-refresh via `RefreshControl`. Estados: spinner, erro com "Tentar novamente", vazio. Navegação de retorno via botão Voltar do Stack (sem `MenuHeader` nem Central de Controle).
@@ -701,7 +704,7 @@ Dependências transversais (consumidas por quase tudo):
 2. **Chaves do AsyncStorage duplicadas como string literal** — `useContas.js`, `useRelatorioContas.js`, `useCartaoManager.js`, `AppContent.js` e `ModalGerenciarLimite.js` usam `'@userKeyShareId'`/`'@userId'` diretamente em vez de `STORAGE_KEYS`. Alterar os valores em `authSession.js` sem atualizar esses pontos quebra silenciosamente.
 3. **Convenção de mês (0-based vs 1-based)** — contas/filtros usam 0–11; o domínio de limites envia 1–12 (`ModalGerenciarLimite` faz `parseInt(mes)+1`). Misturar as convenções corrompe os filtros.
 4. **Eixos diferentes Home × relatórios** — Home = `data_lancamento`; relatórios = vencimento. A lógica do `onSuccess` em `AppContent` depende disso para decidir o reload.
-5. **`modal-insert.js` (possível bug de TDZ)** — `cartaoSelecionado` é usado nas linhas 35–43 (argumento de `useNovaConta` e `isCartaoDebito`) **antes** da declaração `const cartaoSelecionado = ...` na linha 46. Dependendo da transpilação, `ehDebito` pode avaliar sempre com `undefined`. Verificar antes de mexer na lógica de débito deste modal.
+5. **`modal-insert.js`** — o antigo risco de TDZ de `cartaoSelecionado` foi **corrigido**: a declaração (`const cartaoSelecionado = ...`) vem antes de todos os usos (`ehDebito` e JSX). Continua sendo o modal mais sensível do app (criação/edição de conta) — testar débito, parcelado e recorrente ao alterar.
 6. **`useNovaConta`** — concentra a maior parte das regras de negócio de contas (débito, competência, escopo de grupo, exclusividade parcelado/recorrente). Alterações exigem teste de todos os cenários: criação simples, débito, parcelado, recorrente, edição simples, edição em grupo (3 escopos).
 7. **`useRelatorioContas` compartilhado** — usado por duas telas (`ContasAPagar`, `ContasPagas`); mudanças afetam ambas. Seu `useEffect` não depende de `endpoint`/`listaKey` (não trocar em runtime).
 8. **Hooks sem auto-load** — `useCartaoManager` e `useDashboardCartoes` exigem chamada manual (`carregarCartoes()`/`carregar()`); esquecer isso gera listas vazias sem erro.
@@ -749,11 +752,14 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-07-19 | Criação de `docs/APP_OVERVIEW.md` (visão geral do produto) + consolidação da documentação | `docs/APP_OVERVIEW.md`, `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` |
+| 2026-06-27 | Modernização visual consolidada das telas financeiras (padrão `#F4F8FF` + cards brancos + safe area) — sem mudança de contrato | `AppContent.js`, `ContasAPagar.js`, `ContasPagas.js`, `DashboardFinanceiro.js`, `DashboardCartoes.js`, `RelatorioCategorias.js`, `MetasFinanceiras.js`, `FechamentoMensal.js`, `ModalConfig.js` |
 | 2026-06-21 | Navegador mensal `MonthNavigator` (substitui pickers ano/mês) | `src/components/MonthNavigator.js`, 7 telas financeiras, `docs/PROJECT_STRUCTURE.md` |
 | 2026-06-21 | Padronização de navegação visual | `App.js`, `src/screens/DashboardCartoes.js`, `docs/PROJECT_STRUCTURE.md` |
 | 2026-06-20 | Nova tela Fechamento Mensal (MVP) | `src/screens/FechamentoMensal.js`, `src/hooks/useFechamentoMensal.js`, `src/utils/resumoFinanceiroVencimento.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Metas Financeiras (MVP) | `src/screens/MetasFinanceiras.js`, `src/hooks/useMetasFinanceiras.js`, `App.js`, `MenuHeader.js` |
 | 2026-06-20 | Nova tela Dashboard Financeiro Geral | `src/screens/DashboardFinanceiro.js`, `App.js`, `MenuHeader.js` |
+| 2026-06-20 | Backend `api-contas-a-pagar` integrado ao monorepo | `api-contas-a-pagar/` (pasta completa), `.gitignore` |
 | 2026-06-20 | Auditoria segurança PG + doc §8 | `postgres-config.js`, `BACKUP_AND_RESTORE.md`, `DEPLOY_VPS.md`, `.gitignore` |
 | 2026-06-20 | PostgreSQL via env (postgres-config.js) | `src/database/postgres-config.js`, `conexao.js`, `estrutura.js` |
 | 2026-06-15 | Backup/restore PostgreSQL + doc | `api-contas-a-pagar/scripts/backup-database.js`, `postgres-env.js`, `docs/BACKUP_AND_RESTORE.md` |

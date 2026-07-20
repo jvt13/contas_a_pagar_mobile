@@ -1,9 +1,9 @@
 # OrganizeContas - Regras de Desenvolvimento para Agentes de IA
 
 > Regras oficiais para qualquer agente de IA (ou desenvolvedor) que for alterar este projeto.
-> Documento complementar a `docs/PROJECT_STRUCTURE.md` (fonte de verdade da arquitetura) e `docs/CHANGELOG_STRUCTURE.md` (registro de mudanças estruturais).
+> Documento complementar a `docs/PROJECT_STRUCTURE.md` (fonte de verdade da arquitetura), `docs/APP_OVERVIEW.md` (visão geral do produto, decisões e backlog) e `docs/CHANGELOG_STRUCTURE.md` (registro de mudanças estruturais).
 >
-> Última atualização: 11/06/2026.
+> Última atualização: 19/07/2026.
 
 ---
 
@@ -16,7 +16,7 @@
    - Função pura, formatação, cálculo, catálogo → `src/utils/`.
    - URL/ambiente → `src/config/`.
 3. **Verifique os consumidores** do arquivo que pretende alterar (seções 3–7 do `PROJECT_STRUCTURE.md`). Hooks e utils compartilhados afetam múltiplas telas.
-4. **Não invente comportamento de backend.** O backend (`api-contas`) não está neste repositório. Os contratos conhecidos estão na seção 7 do `PROJECT_STRUCTURE.md`. Se precisar de um endpoint novo ou de mudança de contrato, sinalize explicitamente — não presuma que existe.
+4. **Não invente comportamento de backend.** O backend está no monorepo em `api-contas-a-pagar/` (o VPS de produção roda a partir de repositório separado — ver `DEPLOY_VPS.md`). Os contratos conhecidos estão na seção 7 do `PROJECT_STRUCTURE.md`; em caso de dúvida, confirme no código do backend. Se precisar de um endpoint novo ou de mudança de contrato, sinalize explicitamente — não presuma que existe.
 
 ---
 
@@ -60,7 +60,9 @@
 - Criar componente novo apenas se o bloco visual for usado em **2+ lugares** ou for um modal de domínio novo. Componente de uso único e acoplado à tela fica local (ex.: `CustomCheckBox` em `AppContent`).
 - Respeitar as subpastas por domínio: `bancos/`, `categorias/`, `dashboard/`, `modal/`.
 - Ícones: usar `AppIcon` (e registrar nomes semânticos em `APP_ICONS` quando fizer sentido); fechar modais com `ModalCloseButton`.
-- Seleções simples: usar `CustomPicker` com opções `{ label, value }`.
+- Filtro mês/ano em telas financeiras: usar `MonthNavigator` (setas `‹ Mês/Ano ›`, mês string 0-based) — **não** reintroduzir `CustomPicker` para mês/ano nessas telas. Exceção intencional: `DashboardCartoes` não tem filtro de mês (visão operacional; ver `APP_OVERVIEW.md`).
+- Seleções simples (fora mês/ano): usar `CustomPicker` com opções `{ label, value }`.
+- Padrão visual das telas modernizadas: fundo `#F4F8FF`, cards brancos com borda `#E3EBF5` e `borderRadius: 14`, azul `#1E4DB7`, verde `#1E8E5A`, laranja `#C47A1A`, vermelho `#D64545`, estados vazios com ícone + texto, safe area via `useSafeAreaInsets` (detalhes em `APP_OVERVIEW.md` §3).
 
 ### 3.6 Utils (`src/utils/`)
 - Apenas funções puras/catálogos/cliente HTTP — **sem** `useState`/JSX.
@@ -96,7 +98,7 @@
 
 1. `utils/services.js` — afeta todas as requisições e o logout por 401.
 2. Strings literais de AsyncStorage (5 arquivos) — risco de drift com `STORAGE_KEYS`.
-3. `modal-insert.js` — **possível bug de TDZ**: `cartaoSelecionado` é usado (linhas ~35–43) antes da declaração (linha ~46). Não assumir que `ehDebito` funciona como aparenta; verificar em runtime antes de alterar a lógica de débito desse modal.
+3. `modal-insert.js` — o antigo risco de TDZ de `cartaoSelecionado` foi **corrigido** (declaração antes de todos os usos). Ainda assim, é o modal mais sensível do app: alterar a lógica de débito/parcelamento/recorrência exige testar todos os cenários.
 4. `useRelatorioContas` — compartilhado por duas telas; seu `useEffect` não reage a `endpoint`/`listaKey`.
 5. Código morto conhecido (não usar como referência): `CartaoLabel.js` sem consumidores; props `loadContas` (`ModalConfig`) e `onSalvarLimite` (`ModalGerenciarLimite`) não usadas; `formatarLimite` sem uso; import `isCartaoDebito` não usado em `ModalGerenciarCartao`.
 
