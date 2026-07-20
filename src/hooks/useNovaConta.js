@@ -22,7 +22,53 @@ import {
 
 export { OPCOES_PARCELAS };
 
-export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes = []) {
+const LABELS_CAMPOS_OBRIGATORIOS = {
+  tipo_cartao: 'cartão',
+  nome: 'nome',
+  categoria: 'categoria',
+  vencimento: 'vencimento',
+  valor: 'valor',
+};
+
+function montarMensagemCamposObrigatorios(faltando, origemPreenchimento) {
+  const chaves = Array.isArray(faltando) ? faltando.filter(Boolean) : [];
+  if (chaves.length === 0) {
+    return 'Preencha todos os campos.';
+  }
+
+  if (chaves.length === 1) {
+    const chave = chaves[0];
+    if (chave === 'categoria') {
+      return origemPreenchimento === 'mensagem_bancaria'
+        ? 'Selecione uma categoria para concluir o lançamento importado.'
+        : 'Selecione uma categoria.';
+    }
+    if (chave === 'tipo_cartao') {
+      return 'Selecione um cartão.';
+    }
+    if (chave === 'nome') {
+      return 'Informe o nome do gasto.';
+    }
+    if (chave === 'vencimento') {
+      return 'Informe a data de vencimento.';
+    }
+    if (chave === 'valor') {
+      return 'Informe o valor.';
+    }
+  }
+
+  const labels = chaves.map((chave) => LABELS_CAMPOS_OBRIGATORIOS[chave] || chave);
+  return `Preencha os campos obrigatórios: ${labels.join(', ')}.`;
+}
+
+export default function useNovaConta(
+  ano,
+  mes,
+  onSuccess,
+  editarConta,
+  cartoes = [],
+  origemPreenchimento = null
+) {
   const [form, setForm] = useState({
     tipo_cartao: '',
     nome: '',
@@ -58,8 +104,25 @@ export default function useNovaConta(ano, mes, onSuccess, editarConta, cartoes =
       total_recorrencias,
     } = form;
 
-    if (!tipo_cartao || !nome || !categoria || !vencimento || !valorBackend?.valor) {
-      return Alert.alert('Erro', 'Preencha todos os campos.');
+    const faltando = [];
+    if (!tipo_cartao) {
+      faltando.push('tipo_cartao');
+    }
+    if (!nome || !String(nome).trim()) {
+      faltando.push('nome');
+    }
+    if (!categoria) {
+      faltando.push('categoria');
+    }
+    if (!vencimento) {
+      faltando.push('vencimento');
+    }
+    if (!valorBackend?.valor && valorBackend?.valor !== 0) {
+      faltando.push('valor');
+    }
+
+    if (faltando.length > 0) {
+      return Alert.alert('Erro', montarMensagemCamposObrigatorios(faltando, origemPreenchimento));
     }
 
     const cartaoSelecionado = (Array.isArray(cartoes) ? cartoes : []).find(

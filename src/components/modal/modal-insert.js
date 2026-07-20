@@ -40,7 +40,8 @@ export default function Modal_Nova_Conta({
     mes,
     onSuccess,
     editarConta,
-    cartoes
+    cartoes,
+    origemPreenchimento
   );
 
   const tipoCartaoId = String(form.tipo_cartao || '');
@@ -281,6 +282,7 @@ export default function Modal_Nova_Conta({
             <View style={styles.avisoImportacao}>
               <Text style={styles.avisoImportacaoTexto}>
                 Pré-preenchido a partir de mensagem importada. Revise os campos antes de salvar.
+                {'\n'}Categoria deve ser escolhida manualmente.
               </Text>
             </View>
           ) : null}
