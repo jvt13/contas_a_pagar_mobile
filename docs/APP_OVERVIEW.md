@@ -3,7 +3,7 @@
 > **Referência principal do estado atual do produto**: o que o app faz hoje, padrão visual/UX, decisões de arquitetura e produto, backlog futuro e informações de build/deploy.
 > Complementa `docs/PROJECT_STRUCTURE.md` (arquitetura detalhada — fonte de verdade técnica), `docs/AI_DEVELOPMENT_RULES.md` (regras para agentes) e `docs/CHANGELOG_STRUCTURE.md` (histórico de mudanças estruturais).
 >
-> Última atualização: 19/07/2026.
+> Última atualização: 28/07/2026.
 
 ---
 
@@ -17,7 +17,8 @@ Aplicativo mobile (Android, React Native/Expo) de **controle de contas pessoais*
 
 - **Login / cadastro / organização compartilhada** (`Login`, `Register`, `ModalShareOrganization`; sessão local via AsyncStorage).
 - **Cadastro de contas** (despesas) com cartão, categoria/subcategoria, vencimento e valor (`Modal_Nova_Conta`).
-- **Importar mensagem bancária** (MVP) — cola texto de SMS/notificação na Central de Controle; parser **local** sugere pré-lançamento; usuário revisa e salva pelo fluxo atual. Sem SMS automático, sem Notification Listener, sem permissões novas; texto bruto não vai ao servidor nem é persistido.
+- **Importar mensagem bancária** (MVP) — cola texto de SMS/notificação na Central de Controle; parser **local** sugere pré-lançamento; usuário revisa e salva pelo fluxo atual. Sem SMS automático; texto bruto não vai ao servidor nem é persistido.
+- **Lançamentos detectados** (experimental Android) — captura opcional via `NotificationListenerService` (desativada por padrão). Exige permissão manual de acesso a notificações no Android. Cria só **rascunhos locais** no aparelho; usuário revisa e salva pelo mesmo fluxo de importação → `Modal_Nova_Conta`. **Não** lê SMS, **não** envia texto ao backend, **não** cria conta automaticamente.
 - **Contas a Pagar** — relatório de pendentes do mês (eixo vencimento).
 - **Contas Pagas** — relatório de pagas do mês (eixo vencimento).
 - **Cartão de crédito** — com dia de fechamento (`dia_util`), dia de vencimento e limite; **competência financeira**: compra até o fechamento entra na fatura corrente; se dia de vencimento > dia de fechamento a fatura é paga no mesmo mês, senão no mês seguinte.
@@ -34,9 +35,9 @@ Aplicativo mobile (Android, React Native/Expo) de **controle de contas pessoais*
 - **Backup/restore do PostgreSQL** — `npm run backup` no backend (ver `docs/BACKUP_AND_RESTORE.md`).
 - **APK Android via EAS Build** (perfis `preview-local`, `preview`, `production-apk`, `production`).
 
-### Telas registradas no stack (10)
+### Telas registradas no stack (11)
 
-`Login`, `Register`, `Home` (AppContent), `ContasPagas`, `ContasAPagar`, `DashboardCartoes`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`.
+`Login`, `Register`, `Home` (AppContent), `ContasPagas`, `ContasAPagar`, `DashboardCartoes`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `LancamentosDetectados`.
 
 ---
 
@@ -57,7 +58,7 @@ Todas as telas financeiras foram modernizadas (jun/2026) seguindo o mesmo padrã
 
 - **Home não tem header nativo** (`headerShown: false`); usa o **`MenuHeader`** (menu hamburger global + avatar/saudação + logout) — único lugar do app com menu global.
 - **Telas secundárias usam header nativo do Stack** (fundo azul `#1E4DB7`, botão Voltar, título), configurado em `stackScreenOptions` no `App.js`. Elas **não** usam `MenuHeader`.
-- **Central de Controle** (`ModalConfig`: gerenciar limite, criar cartão, **importar mensagem**, controle de organização) é acessível **apenas pela Home**. O modal filtra opções por callbacks válidos; `DashboardCartoes` **não** usa `ModalConfig`.
+- **Central de Controle** (`ModalConfig`: gerenciar limite, criar cartão, **importar mensagem**, **lançamentos detectados**, controle de organização) é acessível **apenas pela Home**. O modal filtra opções por callbacks válidos; `DashboardCartoes` **não** usa `ModalConfig`.
 
 ### `MonthNavigator` (navegação mensal padronizada)
 
@@ -157,9 +158,11 @@ Funcionalidades registradas para versões futuras — **nenhuma delas deve ser i
 - Histórico de faturas;
 - Notificações inteligentes;
 - Share intent (compartilhar texto do Android para o app) para importar mensagem;
-- Detecção opcional de SMS/notificações bancárias para sugerir lançamento — **apenas ideia futura**: não implementar agora, não adicionar permissões, não instalar dependências, não alterar `app.json`/`package.json`;
+- Preencher pacotes reais de apps bancários no catálogo de captura (aprendidos no teste);
 - Sugestão automática de categoria a partir da mensagem;
 - Outras melhorias funcionais futuras.
+
+> **Nota (28/07/2026)**: a captura experimental de notificações Android (Notification Listener) foi implementada como opt-in local. Detecção por SMS **permanece fora de escopo**.
 
 ---
 

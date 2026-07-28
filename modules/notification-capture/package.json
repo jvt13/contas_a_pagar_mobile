@@ -1,0 +1,12 @@
+{
+  "name": "notification-capture",
+  "version": "1.0.0",
+  "main": "index.js",
+  "description": "Captura experimental de notificações bancárias (Android NotificationListenerService)",
+  "license": "UNLICENSED",
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

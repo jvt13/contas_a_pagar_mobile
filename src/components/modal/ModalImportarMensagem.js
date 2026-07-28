@@ -52,7 +52,13 @@ function formatarTipo(tipo) {
   }
 }
 
-export default function ModalImportarMensagem({ visible, onClose, onContinuar }) {
+export default function ModalImportarMensagem({
+  visible,
+  onClose,
+  onContinuar,
+  textoInicial = '',
+  preLancamentoInicial = null,
+}) {
   const [texto, setTexto] = useState('');
   const [preLancamento, setPreLancamento] = useState(null);
   const { cartoes, carregarCartoes } = useCartaoManager();
@@ -62,7 +68,18 @@ export default function ModalImportarMensagem({ visible, onClose, onContinuar })
       return;
     }
     carregarCartoes();
-  }, [visible]);
+
+    const inicial = String(textoInicial || '').trim();
+    if (preLancamentoInicial) {
+      setTexto(inicial);
+      setPreLancamento(preLancamentoInicial);
+      return;
+    }
+    if (inicial) {
+      setTexto(inicial);
+      setPreLancamento(parseMensagemBancaria(inicial));
+    }
+  }, [visible, textoInicial, preLancamentoInicial]);
 
   const limparEstado = () => {
     setTexto('');

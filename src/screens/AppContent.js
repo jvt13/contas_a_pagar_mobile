@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../components/AppIcon';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -257,6 +258,7 @@ export default function AppContent() {
 
   const screenHeight = Dimensions.get('window').height;
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
   const listBottomPadding = Math.max(insets.bottom + 32, 72);
   const { carregarCartoes } = useCartoes();
   const { contas, totais, anos, loading, loadContas, marcarComoPaga } = useContas(
@@ -385,6 +387,11 @@ export default function AppContent() {
     setOrigemPreenchimento(null);
     setModalConfigVisible(false);
     setModalImportarVisible(true);
+  };
+
+  const abrirLancamentosDetectados = () => {
+    setModalConfigVisible(false);
+    navigation.navigate('LancamentosDetectados');
   };
 
   return (
@@ -569,6 +576,7 @@ export default function AppContent() {
         }}
         abrirModalImportarMensagem={abrirModalImportarMensagem}
         onImportarMensagem={abrirModalImportarMensagem}
+        abrirLancamentosDetectados={abrirLancamentosDetectados}
         abrirModalContrlOrga={() => {
           setShareModalVisible(true);
           setModalConfigVisible(false);

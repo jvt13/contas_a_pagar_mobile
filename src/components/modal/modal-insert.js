@@ -278,10 +278,14 @@ export default function Modal_Nova_Conta({
         <View style={styles.modalContent}>
           <Text style={styles.titulo}>{editarConta ? 'Editar Conta' : 'Adicionar Nova Conta'}</Text>
 
-          {origemPreenchimento === 'mensagem_bancaria' && !editarConta ? (
+          {(origemPreenchimento === 'mensagem_bancaria' ||
+            origemPreenchimento === 'notification_listener') &&
+          !editarConta ? (
             <View style={styles.avisoImportacao}>
               <Text style={styles.avisoImportacaoTexto}>
-                Pré-preenchido a partir de mensagem importada. Revise os campos antes de salvar.
+                {origemPreenchimento === 'notification_listener'
+                  ? 'Pré-preenchido a partir de notificação detectada. Revise os campos antes de salvar.'
+                  : 'Pré-preenchido a partir de mensagem importada. Revise os campos antes de salvar.'}
                 {'\n'}Categoria deve ser escolhida manualmente.
               </Text>
             </View>

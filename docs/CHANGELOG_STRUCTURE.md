@@ -52,6 +52,24 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-07-28 — Captura experimental Android de notificações (rascunhos locais)
+
+- **Tipo**: Nova tela + Novo hook + Novo util + Módulo Expo local + Config plugin + Dependência.
+- **Descrição**: Opt-in experimental: `NotificationListenerService` captura notificações filtradas, salva rascunhos em SharedPreferences nativo (máx. 50, dedupe por hash). JS lê, aplica filtros/parser local e exibe em **Lançamentos detectados**. Usuário revisa via `ModalImportarMensagem` → `Modal_Nova_Conta` → `salvarConta`. Desativada por padrão; sem SMS; sem backend; pasta `android/` permanece gitignored (CNG + módulo local `modules/notification-capture` + `plugins/withNotificationListener.js`).
+- **Arquivos impactados**:
+  - `modules/notification-capture/` (criado — módulo Expo Android)
+  - `plugins/withNotificationListener.js` (criado)
+  - `src/screens/LancamentosDetectados.js` (criado)
+  - `src/hooks/useLancamentosDetectados.js` (criado)
+  - `src/utils/appsBancariosNotificacao.js`, `filtrosNotificacaoBancaria.js`, `lancamentosDetectados.js` (criados)
+  - `src/native/notificationListener.js` (criado)
+  - `App.js`, `MenuHeader.js`, `ModalConfig.js`, `ModalImportarMensagem.js`, `modal-insert.js`, `AppContent.js` (alterados)
+  - `app.json`, `package.json` (alterados — plugin + dep `file:./modules/notification-capture`)
+  - `docs/*` (alterados)
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: nova rota/menu/Central; importação manual e cadastro preservados; **rebuild APK/EAS** necessário.
+- **Documentação atualizada**: `APP_OVERVIEW.md` §2, §3, §6; `PROJECT_STRUCTURE.md` (várias seções + §14); `AI_DEVELOPMENT_RULES.md` §6.
+
 ### 2026-07-19 — Importar mensagem bancária (MVP — texto colado)
 
 - **Tipo**: Novo util + Novo componente.

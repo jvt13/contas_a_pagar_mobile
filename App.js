@@ -15,6 +15,7 @@ import RelatorioCategorias from './src/screens/RelatorioCategorias';
 import DashboardFinanceiro from './src/screens/DashboardFinanceiro';
 import MetasFinanceiras from './src/screens/MetasFinanceiras';
 import FechamentoMensal from './src/screens/FechamentoMensal';
+import LancamentosDetectados from './src/screens/LancamentosDetectados';
 import Login from './src/screens/Login';
 import Register from './src/screens/Register';
 
@@ -123,6 +124,11 @@ export default function App() {
             name="FechamentoMensal"
             component={FechamentoMensal}
             options={{ title: 'Fechamento Mensal' }}
+          />
+          <Stack.Screen
+            name="LancamentosDetectados"
+            component={LancamentosDetectados}
+            options={{ title: 'Lançamentos detectados' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

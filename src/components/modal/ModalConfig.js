@@ -20,6 +20,15 @@ const OPCOES = [
     onPressKey: 'abrirModalImportarMensagem',
   },
   {
+    key: 'detectados',
+    titulo: 'Lançamentos detectados',
+    descricao: 'Captura experimental de notificações bancárias (Android).',
+    icon: 'notifications-outline',
+    iconBg: '#E9F5FF',
+    iconColor: '#1E4DB7',
+    onPressKey: 'abrirLancamentosDetectados',
+  },
+  {
     key: 'limite',
     titulo: 'Gerenciar limite',
     descricao: 'Defina e acompanhe o limite de gastos do mês.',
@@ -72,6 +81,7 @@ export default function ModalConfig({
   abrirModalContrlOrga,
   abrirModalImportarMensagem,
   onImportarMensagem,
+  abrirLancamentosDetectados,
 }) {
   // Aceita alias onImportarMensagem (mesmo handler) para não esconder a opção por nome de prop.
   const handlerImportar =
@@ -86,6 +96,7 @@ export default function ModalConfig({
     abrirModalGerenciar,
     abrirModalContrlOrga,
     abrirModalImportarMensagem: handlerImportar,
+    abrirLancamentosDetectados,
   };
 
   const opcoesDisponiveis = OPCOES.filter(

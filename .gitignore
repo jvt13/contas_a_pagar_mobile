@@ -9,9 +9,10 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native (gerados por prebuild local — EAS gera na nuvem)
-android/
-ios/
+# Native gerados por prebuild local (somente na raiz — EAS gera na nuvem).
+# Não usar "android/" solto: isso ignoraria modules/*/android/ de módulos Expo locais.
+/android/
+/ios/
 .kotlin/
 *.orig.*
 *.jks

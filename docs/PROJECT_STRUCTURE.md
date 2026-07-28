@@ -4,7 +4,7 @@
 > Deve ser mantida atualizada sempre que houver mudanças estruturais relevantes (ver seção 14).
 > Para visão geral do **produto** (funcionalidades, padrão visual/UX, decisões, backlog futuro, build/deploy), ver `docs/APP_OVERVIEW.md`.
 >
-> Última atualização: 19/07/2026 (gerada a partir da análise do código real).
+> Última atualização: 28/07/2026 (gerada a partir da análise do código real).
 
 ---
 
@@ -46,7 +46,7 @@ Aplicativo mobile de **controle de contas pessoais**: lançamento de contas (des
 2. `App.js` registra o handler de 401, verifica `hasValidSession()` e decide a rota inicial (`Home` ou `Login`).
 3. `Login` → `POST /auth/login` → `saveSession()` → navega para `Home`.
 4. `Home` (`AppContent.js`) lista as contas do mês via `useContas` (`POST /contas_lancadas`), exibe totais, permite criar/editar/excluir contas, marcar como paga e abrir a Central de Controle (limite, cartões, organização).
-5. Telas secundárias (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`) são acessadas pelo menu global da **Home** (`MenuHeader`) e exibem header nativo do Stack (botão Voltar + título), sem `MenuHeader` nem Central de Controle.
+5. Telas secundárias (`ContasAPagar`, `ContasPagas`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`, `LancamentosDetectados`) são acessadas pelo menu global da **Home** (`MenuHeader`) e exibem header nativo do Stack (botão Voltar + título), sem `MenuHeader` nem Central de Controle.
 
 ```
 index.js → App.js (NavigationContainer + Stack)
@@ -54,12 +54,13 @@ index.js → App.js (NavigationContainer + Stack)
   ├── Register ────── POST /auth/register → Login
   ├── Home (AppContent)
   │     ├── useContas / useCategorias / useCartaoManager
-  │     └── Modais: Nova Conta, Config, Limite, Cartão, Ações, Compartilhar Org
+  │     └── Modais: Nova Conta, Config, Limite, Cartão, Ações, Compartilhar Org, Importar Mensagem
   ├── ContasAPagar ── useRelatorioContas('/contas_pendentes')
   ├── ContasPagas ─── useRelatorioContas('/contas_pagas')
   ├── RelatorioCategorias ─ useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
   ├── MetasFinanceiras ─── useMetasFinanceiras (AsyncStorage) + useCategorias + GET /contas_pendentes + /contas_pagas (eixo vencimento)
   ├── FechamentoMensal ─── useFechamentoMensal (AsyncStorage snapshot) + GET /contas_pendentes + /contas_pagas + obterLimiteMensal (eixo vencimento)
+  ├── LancamentosDetectados ─ useLancamentosDetectados (SharedPreferences nativo + parser local)
   └── DashboardCartoes ── useDashboardCartoes (useFocusEffect)
 ```
 
@@ -76,6 +77,8 @@ controle_contas/
 ├── eas.json                # Perfis de build (preview-local, preview, production-apk, production)
 ├── .env / .env.example     # EXPO_PUBLIC_API_URL (dev)
 ├── package.json            # Dependências e scripts (build, bump de versão)
+├── plugins/                # Config plugins Expo (ex.: withNotificationListener)
+├── modules/                # Módulos Expo locais (ex.: notification-capture — Android)
 ├── *.bat                   # Scripts Windows de build (APK/AAB via EAS)
 ├── assets/                 # Imagens e ícones do app
 ├── docs/                   # Documentação (este arquivo, APP_OVERVIEW, regras de IA, changelog, backup)
@@ -89,6 +92,7 @@ controle_contas/
     │   ├── dashboard/      # Cards do dashboard de cartões
     │   └── modal/          # Modais de domínio (conta, cartão, limite, config, org)
     ├── hooks/              # Hooks customizados (estado + chamadas de API)
+    ├── native/             # Reexports de pontes nativas locais
     └── utils/              # Funções puras, cliente HTTP, sessão, regras de cálculo
 ```
 
@@ -112,7 +116,7 @@ controle_contas/
 ### Raiz
 
 #### `App.js`
-- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 10 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`. Define `stackScreenOptions` compartilhado (header azul `#1E4DB7`, botão Voltar, fundo `#F4F8FF`) para telas com header visível; `Home` usa `headerShown: false`.
+- **Responsabilidade**: Componente raiz. Monta `GestureHandlerRootView` + `NavigationContainer` + stack nativo com as 11 rotas (`Login`, `Register`, `Home`, `ContasPagas`, `ContasAPagar`, `RelatorioCategorias`, `DashboardFinanceiro`, `MetasFinanceiras`, `FechamentoMensal`, `LancamentosDetectados`, `DashboardCartoes`). Registra `setUnauthorizedHandler` (401 → `clearSession()` + reset para `Login`). Decide rota inicial via `hasValidSession()`. Define `stackScreenOptions` compartilhado (header azul `#1E4DB7`, botão Voltar, fundo `#F4F8FF`) para telas com header visível; `Home` usa `headerShown: false`.
 - **Utilizado por**: `index.js`.
 - **Dependências**: `src/screens/*`, `src/utils/services.js` (`setUnauthorizedHandler`), `src/utils/authSession.js` (`clearSession`, `hasValidSession`).
 - **Impacto de alteração**: Quebra navegação inteira, fluxo de login/logout automático e tratamento de sessão expirada.
@@ -127,8 +131,16 @@ controle_contas/
 - **Impacto de alteração**: App pode apontar para API errada (dev × produção).
 
 #### `app.json`
-- **Responsabilidade**: Metadados Expo: nome **OrganizeContas**, pacote `com.zevitor.controle_contas`, `versionCode`, ícones, splash, plugins (`expo-web-browser`, `datetimepicker`, `expo-build-properties` com `usesCleartextTraffic: true`).
-- **Impacto de alteração**: Builds/publicação na loja.
+- **Responsabilidade**: Metadados Expo: nome **OrganizeContas**, pacote `com.zevitor.controle_contas`, `versionCode`, ícones, splash, plugins (`expo-web-browser`, `datetimepicker`, `expo-build-properties` com `usesCleartextTraffic: true`, `./plugins/withNotificationListener.js` para declarar o `NotificationListenerService` no prebuild/EAS).
+- **Impacto de alteração**: Builds/publicação na loja; plugin de notificações exige **rebuild nativo** (EAS/APK).
+
+#### `plugins/withNotificationListener.js`
+- **Responsabilidade**: Config plugin que injeta o serviço `expo.modules.notificationcapture.NotificationCaptureService` no `AndroidManifest` gerado (CNG). Não versiona `android/`.
+- **Impacto de alteração**: Builds Android; captura experimental.
+
+#### `modules/notification-capture/`
+- **Responsabilidade**: Módulo Expo local Android: `NotificationListenerService` + ponte JS (`NotificationCapture`) + SharedPreferences para rascunhos. Dependência `file:./modules/notification-capture` no `package.json`.
+- **Impacto de alteração**: Captura experimental; exige rebuild nativo.
 
 #### `eas.json`
 - **Responsabilidade**: Perfis de build: `preview-local` (APK, API local), `preview` (APK interno, API prod), `production-apk` (APK, API prod), `production` (AAB para loja, API prod). Cada perfil define `EXPO_PUBLIC_API_URL`.
@@ -196,13 +208,26 @@ controle_contas/
 
 #### `src/utils/parserMensagemBancaria.js`
 - **Responsabilidade**: Parser **local** de texto colado de mensagem bancária. Exporta `parseMensagemBancaria(texto)` → DTO `PreLancamento` (sem texto bruto). Extrai valor, banco, tipo/forma, data/hora, descrição e score de confiança. Sem I/O, sem API, sem persistência.
-- **Utilizado por**: `ModalImportarMensagem.js`.
+- **Utilizado por**: `ModalImportarMensagem.js`, `utils/lancamentosDetectados.js`.
 - **Impacto de alteração**: Qualidade das sugestões de importação; não afeta cadastro manual.
 
 #### `src/utils/mapPreLancamentoParaInitialValues.js`
 - **Responsabilidade**: Mapeia `PreLancamento` → `initialValues` do `Modal_Nova_Conta`. Match de cartão só se banco+forma com **um** cartão compatível e confiança alta; categoria sempre vazia no MVP; vencimento só para débito (hoje); `data_lancamento` = data da mensagem se válida.
 - **Utilizado por**: `ModalImportarMensagem.js`.
 - **Impacto de alteração**: Prefill do modal de nova conta a partir da importação.
+
+#### `src/utils/appsBancariosNotificacao.js`
+- **Responsabilidade**: Catálogo inicial de apps bancários para captura de notificações (`pacotes[]` vazios até aprendizado; aliases).
+- **Utilizado por**: `utils/lancamentosDetectados.js`.
+
+#### `src/utils/filtrosNotificacaoBancaria.js`
+- **Responsabilidade**: Filtros JS de segurança (sinais de transação × ignorar OTP/promo). Em dúvida, rejeita.
+- **Utilizado por**: `utils/lancamentosDetectados.js`.
+
+#### `src/utils/lancamentosDetectados.js`
+- **Responsabilidade**: Orquestra captura experimental: status de permissão/ativação, sync de filtros nativos, listagem/enriquecimento com parser local, marcar importado/ignorado, limpar. Sem API.
+- **Utilizado por**: `hooks/useLancamentosDetectados.js`.
+- **Dependências**: `modules/notification-capture`, `parserMensagemBancaria`, filtros/catálogo.
 
 #### `src/utils/categorias.js`
 - **Responsabilidade**: Catálogo client-side de categorias: `CATEGORIAS_PADRAO` (15 ativas + 3 legadas: `fixa`, `variavel`, `renda`), `SUBCATEGORIAS_PADRAO`, `CORES_CATEGORIA`, `ICONES_CATEGORIA`, `slugifyCategoria`, `mesclarCategorias`/`mesclarSubcategorias` (custom sobrescreve padrão), `resolverCategoria`/`resolverSubcategoria` (com placeholder "desconhecida"), `formatarLabelCategoria[Completa]`, `filtrarCategorias`/`filtrarSubcategorias`, `isCategoriaRaiz`.
@@ -306,6 +331,11 @@ controle_contas/
 - **Regras embutidas**: defaults = mês/ano atuais; `limiteMes` via `obterLimiteMensal` (`POST /contas_lancadas`, mês 0-based no filtro); `alturaDisponivel = screenHeight - posicaoTabelaY - 130`.
 - **Utilizado por**: `ContasAPagar.js`, `ContasPagas.js`.
 
+### `src/hooks/useLancamentosDetectados.js` — `useLancamentosDetectados()`
+- **Responsabilidade**: Estado da tela experimental de rascunhos detectados por notificação Android. Sem backend.
+- **Saídas**: `{ rascunhos, pendentes, loading, status, modoAprendizado, recarregar, ativar, desativar, abrirPermissaoAndroid, alternarModoAprendizado, ignorar, excluir, limpar, marcarImportado }`.
+- **Utilizado por**: `LancamentosDetectados.js`.
+
 ---
 
 ## 5. Screens
@@ -376,6 +406,12 @@ controle_contas/
 - **Utils**: `resumoFinanceiroVencimento.js` (`unificarContasPorVencimento`, `montarResumoFechamento`, `montarAnosOptions`).
 - **Fluxo de dados**: filtros `ano`/`mes` (0-based) → `Promise.all` de `GET /contas_pendentes` + `GET /contas_pagas` + `obterLimiteMensal` → unificação por `id` → `montarResumoFechamento` (prévia em tempo real) → salvar/reabrir/atualizar snapshot via AsyncStorage (`@fechamentos_mensais_<orgId>`). Atualizar fechamento existente exige confirmação. Recarrega via `useFocusEffect`.
 
+### `src/screens/LancamentosDetectados.js` (rota `LancamentosDetectados`, header nativo)
+- **Objetivo**: UI experimental Android: ativar/desativar captura, abrir settings de Notification Listener, listar rascunhos locais, lançar (via `ModalImportarMensagem` → `Modal_Nova_Conta`), ignorar/excluir/limpar. Sem `MenuHeader`.
+- **Hooks**: `useLancamentosDetectados()`.
+- **Privacidade**: textos explícitos na tela; dados só no aparelho; save manual obrigatório.
+- **Fluxo**: Lançar → prévia importação → Nova Conta → `salvarConta` → marca rascunho `importado`.
+
 ---
 
 ## 6. Componentes
@@ -386,7 +422,7 @@ controle_contas/
 |---|---|---|---|
 | `AppIcon.js` | Mapeia nomes semânticos → Ionicons (`APP_ICONS`); também exporta `ModalCloseButton` | `name`, `size=22`, `color='#555'`, `style`, `accessibilityLabel`; ModalCloseButton: `onPress`, `style`, `color`, `size` | Quase todos os componentes/telas |
 | `CartaoLabel.js` | Exibe label "Nome - Tipo" do cartão (busca via `useCartoesLookup` se `cartoes` não for passado) | `cartaoId`, `cartao`, `cartoes`, `style`, `numberOfLines=1` | **Sem consumidores ativos** (candidato a remoção/adoção) |
-| `MenuHeader.js` | Menu global da Home: hamburger com navegação para telas secundárias, Central de Controle (quando `onOpenConfig` é passado) e Sair; avatar/saudação do usuário | `onOpenConfig` (opcional — exibe item "Central de Controle" somente se for função) | `AppContent.js` (Home) |
+| `MenuHeader.js` | Menu global da Home: hamburger com navegação para telas secundárias (inclui **Lançamentos detectados**), Central de Controle (quando `onOpenConfig` é passado) e Sair; avatar/saudação do usuário | `onOpenConfig` (opcional — exibe item "Central de Controle" somente se for função); `onImportarMensagem` (opcional) | `AppContent.js` (Home) |
 | `MonthNavigator.js` | Navegação sequencial de mês/ano com setas (‹ ›); exibe rótulo `Mês/Ano` (ex.: `Julho/2026`); atualiza `mes` (string 0-based) e `ano` (string) via `setMes`/`setAno`; transição Janeiro↔Dezembro ajusta o ano | `mes`, `ano`, `setMes`, `setAno`, `style?` | `AppContent`, `ContasAPagar`, `ContasPagas`, `DashboardFinanceiro`, `RelatorioCategorias`, `MetasFinanceiras`, `FechamentoMensal` |
 
 - `MenuHeader` faz **logout**: `clearSession()` + `navigation.reset` para `Login`. Lê `@username` do AsyncStorage. Telas secundárias **não** renderizam `MenuHeader`; usam header nativo do Stack configurado em `App.js` (`stackScreenOptions`).
@@ -422,8 +458,8 @@ controle_contas/
 | Componente | Responsabilidade | Props | Usado em |
 |---|---|---|---|
 | `CustomPicker.js` | Picker genérico (botão + modal com FlatList de opções `{label, value}`) | `selectedValue`, `onValueChange(value)`, `options`, `placeholder`, `style` | `modal-insert` (cartão) |
-| `ModalConfig.js` | "Central de Controle": limite / cartão / **importar mensagem** / organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalImportarMensagem`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
-| `ModalImportarMensagem.js` | Cola texto bancário → parser local → prévia → `initialValues` para nova conta. Descarta texto ao continuar/fechar. | `visible`, `onClose`, `onContinuar(initialValues)` | `AppContent` |
+| `ModalConfig.js` | "Central de Controle": limite / cartão / **importar mensagem** / **lançamentos detectados** / organização (lista filtrada por callbacks válidos) | `visible`, `onClose`, `abrirModalLimite`, `abrirModalGerenciar`, `abrirModalImportarMensagem`, `abrirLancamentosDetectados`, `abrirModalContrlOrga` (prop `loadContas` recebida mas **não usada**) | `AppContent` |
+| `ModalImportarMensagem.js` | Cola texto bancário → parser local → prévia → `initialValues` para nova conta. Aceita `textoInicial` / `preLancamentoInicial` (fluxo de rascunhos detectados). Descarta texto ao continuar/fechar. | `visible`, `onClose`, `onContinuar(initialValues)`, `textoInicial?`, `preLancamentoInicial?` | `AppContent`, `LancamentosDetectados` |
 | `ModalContaAcoes.js` | Modal de long-press na conta: mostra nome, label de parcela/recorrência + status, botões Editar/Excluir | `visible`, `onClose`, `contaSelecionada`, `onEditar`, `onExcluir` | `AppContent` |
 | `ModalGerenciarCartao.js` | CRUD de cartões: banco (grid), apelido, tipo (chips crédito/débito), dias de vencimento/fechamento e limite (só crédito), lista com Editar/Excluir. Usa `useCartaoManager` | `visible`, `onClose` | `AppContent` |
 | `ModalGerenciarLimite.js` | Definição do limite mensal: mês (Picker 0-based, enviado +1), ano (lista `anos` ou novo ano digitado), valor com máscara. Padrão: `obterIdLimite` → update ou insert; depois chama `loadContas()` | `visible`, `onClose`, `anos`, `loadContas` (prop `onSalvarLimite` recebida mas **não usada**) | `AppContent` |
@@ -554,8 +590,11 @@ Consumidores: `conexao.js` (pool da API), `estrutura.js` (CREATE DATABASE), `scr
 | `@categorias_custom_<orgId>` | JSON com categorias/subcategorias custom (`{id, nome, icone, cor, parent_id?, custom: true}`) | `useCategorias` |
 | `@metas_financeiras_<orgId>` | JSON com metas por categoria (`[{ categoriaId, valor }]`, valor string `"NNNN.NN"`) | `useMetasFinanceiras` |
 | `@fechamentos_mensais_<orgId>` | JSON com snapshots de fechamento mensal (`[{ id, ano, mes, status, limiteMensal, despesasTotais, totalPago, totalPendente, disponivel, percentualUso, quantidadeContas, quantidadePagas, quantidadePendentes, topCategorias, observacao, fechadoEm }]`) | `useFechamentoMensal` |
+| `@notif_capture_enabled_pref` / `@notif_capture_modo_aprendizado` | Preferências JS da captura experimental | `utils/lancamentosDetectados.js` |
+| SharedPreferences nativo `organizecontas_notification_capture` | Rascunhos + flags `capture_enabled` / filtros (só Android; módulo `notification-capture`) | `NotificationDraftStore` (Kotlin) |
 
 > Categorias **padrão** vivem em código (`utils/categorias.js`); o backend recebe apenas o slug nas contas.
+> Rascunhos de notificação **nunca** vão ao backend.
 
 ---
 
@@ -763,6 +802,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-07-28 | Captura experimental Android de notificações → rascunhos locais | `modules/notification-capture/`, `plugins/withNotificationListener.js`, `LancamentosDetectados.js`, `useLancamentosDetectados.js`, utils de filtro/catálogo, `App.js`, `MenuHeader`, `ModalConfig`, `ModalImportarMensagem`, `app.json`, `package.json`, docs |
 | 2026-07-19 | Importar mensagem bancária (MVP — texto colado, parser local) | `parserMensagemBancaria.js`, `mapPreLancamentoParaInitialValues.js`, `ModalImportarMensagem.js`, `ModalConfig.js`, `modal-insert.js`, `useNovaConta.js`, `AppContent.js`, docs |
 | 2026-07-19 | Criação de `docs/APP_OVERVIEW.md` (visão geral do produto) + consolidação da documentação | `docs/APP_OVERVIEW.md`, `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` |
 | 2026-06-27 | Modernização visual consolidada das telas financeiras (padrão `#F4F8FF` + cards brancos + safe area) — sem mudança de contrato | `AppContent.js`, `ContasAPagar.js`, `ContasPagas.js`, `DashboardFinanceiro.js`, `DashboardCartoes.js`, `RelatorioCategorias.js`, `MetasFinanceiras.js`, `FechamentoMensal.js`, `ModalConfig.js` |

@@ -3,7 +3,7 @@
 > Regras oficiais para qualquer agente de IA (ou desenvolvedor) que for alterar este projeto.
 > Documento complementar a `docs/PROJECT_STRUCTURE.md` (fonte de verdade da arquitetura), `docs/APP_OVERVIEW.md` (visão geral do produto, decisões e backlog) e `docs/CHANGELOG_STRUCTURE.md` (registro de mudanças estruturais).
 >
-> Última atualização: 19/07/2026.
+> Última atualização: 28/07/2026.
 
 ---
 
@@ -116,7 +116,8 @@
 8. **Não** commitar `.env` nem credenciais.
 9. **Não** adicionar dependências novas sem justificativa; preferir o que já existe no `package.json`.
 10. **Não** duplicar regras de negócio que já existem em `utils/` (parcelamento, competência, tipo de cartão, categorias).
-11. **Importação de mensagem bancária**: processar texto **somente no aparelho**; **não** enviar texto bruto ao backend; **não** persistir texto bruto (AsyncStorage/banco); **não** salvar conta automaticamente — o save final continua em `useNovaConta.salvarConta()`. **Não** adicionar SMS automático, Notification Listener, share intent ou permissões nativas sem solicitação explícita de produto.
+11. **Importação de mensagem bancária**: processar texto **somente no aparelho**; **não** enviar texto bruto ao backend; **não** persistir texto bruto de colagem manual (AsyncStorage/banco); **não** salvar conta automaticamente — o save final continua em `useNovaConta.salvarConta()`.
+12. **Captura experimental de notificações (Android)**: opt-in, desativada por padrão; exige permissão de Notification Listener nas settings do Android; cria só rascunhos locais (SharedPreferences nativo); parser JS existente; **não** ler SMS; **não** adicionar permissão de SMS; **não** versionar `android/` (usar módulo local + config plugin); **não** criar endpoint. Rebuild nativo/EAS obrigatório após mudanças no módulo/plugin.
 
 ---
 

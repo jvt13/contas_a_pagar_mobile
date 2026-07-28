@@ -137,6 +137,11 @@ export default function MenuHeader({ onOpenConfig, onImportarMensagem }) {
             <MenuItem text="Relatório por Categoria" onPress={() => handleNavigation('RelatorioCategorias')} icon="pie-chart-outline" />
             <MenuItem text="Metas Financeiras" onPress={() => handleNavigation('MetasFinanceiras')} icon="flag-outline" />
             <MenuItem text="Fechamento Mensal" onPress={() => handleNavigation('FechamentoMensal')} icon="calendar-outline" />
+            <MenuItem
+              text="Lançamentos detectados"
+              onPress={() => handleNavigation('LancamentosDetectados')}
+              icon="notifications-outline"
+            />
             <MenuItem text="Contas Pagas" onPress={() => handleNavigation('ContasPagas')} icon="checkmark-done-outline" />
             <MenuItem text="Contas a Pagar" onPress={() => handleNavigation('ContasAPagar')} icon="time-outline" />
             {typeof onOpenConfig === 'function' ? (
