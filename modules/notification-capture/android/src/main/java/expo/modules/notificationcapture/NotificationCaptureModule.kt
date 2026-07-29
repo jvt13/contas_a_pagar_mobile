@@ -1,11 +1,14 @@
 package expo.modules.notificationcapture
 
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Intent
+import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
+import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.kotlin.exception.Exceptions
 
 class NotificationCaptureModule : Module() {
   private val context
@@ -23,11 +26,7 @@ class NotificationCaptureModule : Module() {
     }
 
     AsyncFunction("openNotificationAccessSettings") {
-      val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      }
-      context.startActivity(intent)
-      true
+      openListenerSettings()
     }
 
     Function("isCaptureEnabled") {
@@ -69,8 +68,77 @@ class NotificationCaptureModule : Module() {
     }
   }
 
+  /**
+   * Abre a tela especial de Acesso a notificações (Notification Listener).
+   * Nunca usa ACTION_APPLICATION_DETAILS_SETTINGS (Informações do app).
+   */
+  private fun openListenerSettings(): Boolean {
+    val component = ComponentName(context, NotificationCaptureService::class.java)
+
+    // API 30+: tela detalhada só do nosso listener
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+      val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
+        putExtra(
+          Settings.EXTRA_NOTIFICATION_LISTENER_COMPONENT_NAME,
+          component.flattenToString()
+        )
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+      if (startSafely(detail)) {
+        return true
+      }
+    }
+
+    // Lista geral de apps com acesso a notificações (+ highlight em alguns OEMs)
+    val listIntent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      val key = ":settings:fragment_args_key"
+      val value = component.flattenToString()
+      putExtra(key, value)
+      putExtra(
+        ":settings:show_fragment_args",
+        Bundle().apply { putString(key, value) }
+      )
+    }
+    if (startSafely(listIntent)) {
+      return true
+    }
+
+    // Último recurso: mesma action sem extras (alguns ROMs rejeitam extras)
+    val plain = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+      addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+    return startSafely(plain)
+  }
+
+  private fun startSafely(intent: Intent): Boolean {
+    return try {
+      val activity = appContext.currentActivity
+      if (activity != null) {
+        activity.startActivity(intent)
+      } else {
+        context.startActivity(intent)
+      }
+      true
+    } catch (_: Exception) {
+      false
+    }
+  }
+
   private fun isListenerEnabled(): Boolean {
-    val pkgName = context.packageName
+    val component = ComponentName(context, NotificationCaptureService::class.java)
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+      try {
+        val nm = context.getSystemService(NotificationManager::class.java)
+        if (nm != null && nm.isNotificationListenerAccessGranted(component)) {
+          return true
+        }
+      } catch (_: Exception) {
+        // fallback Secure abaixo
+      }
+    }
+
     val flat = Settings.Secure.getString(
       context.contentResolver,
       "enabled_notification_listeners"
@@ -78,10 +146,19 @@ class NotificationCaptureModule : Module() {
     if (flat.isNullOrBlank()) {
       return false
     }
-    val names = flat.split(":").mapNotNull {
-      ComponentName.unflattenFromString(it)
+
+    val targetFlat = component.flattenToString()
+    val pkg = context.packageName
+    val className = NotificationCaptureService::class.java.name
+
+    return flat.split(":").any { entry ->
+      if (entry.equals(targetFlat, ignoreCase = true)) {
+        return@any true
+      }
+      val cn = ComponentName.unflattenFromString(entry) ?: return@any false
+      cn.packageName.equals(pkg, ignoreCase = true) &&
+        cn.className.equals(className, ignoreCase = true)
     }
-    return names.any { it.packageName == pkgName }
   }
 
   private fun toStringList(value: Any?): List<String> {

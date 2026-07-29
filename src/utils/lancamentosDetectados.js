@@ -137,13 +137,11 @@ export async function desativarCapturaExperimental() {
 }
 
 export function obterStatusPermissao() {
-  if (!isNotificationCaptureSupported() && !isNotificationAccessEnabled()) {
-    // Em Expo Go / sem módulo: ainda reportamos com base no que der
-  }
+  const suporteNativo = isNotificationCaptureSupported();
   return {
-    suporteNativo: true,
-    permissaoConcedida: isNotificationAccessEnabled(),
-    capturaAtiva: isCaptureEnabled(),
+    suporteNativo,
+    permissaoConcedida: suporteNativo ? isNotificationAccessEnabled() : false,
+    capturaAtiva: suporteNativo ? isCaptureEnabled() : false,
   };
 }
 

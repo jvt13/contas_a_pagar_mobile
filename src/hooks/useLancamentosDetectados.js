@@ -64,8 +64,13 @@ export default function useLancamentosDetectados() {
   }, [recarregar]);
 
   const abrirPermissaoAndroid = useCallback(async () => {
-    await abrirConfiguracaoAcessoNotificacoes();
-  }, []);
+    const ok = await abrirConfiguracaoAcessoNotificacoes();
+    // Reconsulta status ao voltar (usuário pode ter habilitado)
+    setTimeout(() => {
+      recarregar();
+    }, 600);
+    return ok;
+  }, [recarregar]);
 
   const alternarModoAprendizado = useCallback(
     async (valor) => {

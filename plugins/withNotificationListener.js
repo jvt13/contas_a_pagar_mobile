@@ -26,7 +26,8 @@ function ensureNotificationListenerService(androidManifest) {
       $: {
         'android:name': SERVICE_NAME,
         'android:exported': 'true',
-        'android:label': 'OrganizeContas — captura de notificações',
+        'android:enabled': 'true',
+        'android:label': 'OrganizeContas',
         'android:permission':
           'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
       },
@@ -43,6 +44,18 @@ function ensureNotificationListenerService(androidManifest) {
         },
       ],
     });
+  } else {
+    // Garante atributos essenciais mesmo se já existir (prebuild incremental)
+    const service = app.service.find(
+      (item) => item?.$?.['android:name'] === SERVICE_NAME
+    );
+    if (service?.$) {
+      service.$['android:exported'] = 'true';
+      service.$['android:enabled'] = 'true';
+      service.$['android:label'] = service.$['android:label'] || 'OrganizeContas';
+      service.$['android:permission'] =
+        'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE';
+    }
   }
 
   return androidManifest;

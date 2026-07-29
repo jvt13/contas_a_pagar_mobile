@@ -159,7 +159,7 @@ export default function LancamentosDetectados() {
                 'Abra as configurações e conceda acesso a notificações ao OrganizeContas.',
                 [
                   { text: 'Depois', style: 'cancel' },
-                  { text: 'Abrir configurações', onPress: () => abrirPermissaoAndroid() },
+                  { text: 'Abrir configurações', onPress: () => handleAbrirPermissao() },
                 ]
               );
             } else {
@@ -224,6 +224,16 @@ export default function LancamentosDetectados() {
     ]);
   };
 
+  const handleAbrirPermissao = async () => {
+    const ok = await abrirPermissaoAndroid();
+    if (!ok) {
+      Alert.alert(
+        'Abrir acesso a notificações',
+        'Não foi possível abrir a tela especial automaticamente.\n\nProcure manualmente por:\nConfigurações > Apps > Acesso especial > Acesso a notificações\ne habilite OrganizeContas.\n\nEssa permissão não aparece em “Permissões do app”.'
+      );
+    }
+  };
+
   const handleLimpar = () => {
     Alert.alert('Limpar todos os rascunhos?', 'Remove todos os rascunhos detectados neste aparelho.', [
       { text: 'Cancelar', style: 'cancel' },
@@ -267,6 +277,11 @@ export default function LancamentosDetectados() {
             Desativada por padrão. Ao ativar, o Android pedirá permissão para o OrganizeContas acessar
             notificações. O app usa isso apenas para detectar possíveis lançamentos bancários. Os dados ficam
             neste aparelho e não são enviados ao servidor.
+          </Text>
+
+          <Text style={styles.ajudaPermissao}>
+            Essa permissão não fica em “Permissões do app”. Em alguns celulares, procure em Configurações
+            {' > '}Apps {'> '}Acesso especial {'> '}Acesso a notificações e habilite OrganizeContas.
           </Text>
 
           <View style={styles.statusLinha}>
@@ -316,7 +331,7 @@ export default function LancamentosDetectados() {
             )}
             <TouchableOpacity
               style={styles.btnOutline}
-              onPress={abrirPermissaoAndroid}
+              onPress={handleAbrirPermissao}
               activeOpacity={0.85}
             >
               <Text style={styles.btnOutlineText}>Abrir configurações de notificações</Text>
@@ -463,6 +478,15 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     color: '#6B7A90',
     marginBottom: 12,
+  },
+  ajudaPermissao: {
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#C47A1A',
+    marginBottom: 12,
+    backgroundColor: '#FFF8EE',
+    borderRadius: 10,
+    padding: 10,
   },
   statusLinha: {
     flexDirection: 'row',

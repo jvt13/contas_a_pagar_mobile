@@ -1,9 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <application>
+    <!--
+      Serviço de acesso a notificações (NotificationListenerService).
+      A permissão BIND_NOTIFICATION_LISTENER_SERVICE fica no <service>,
+      não como uses-permission. O app só aparece em
+      Configurações > Acesso a notificações depois desta declaração.
+    -->
     <service
       android:name="expo.modules.notificationcapture.NotificationCaptureService"
       android:exported="true"
-      android:label="OrganizeContas — captura de notificações"
+      android:enabled="true"
+      android:label="OrganizeContas"
       android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
       <intent-filter>
         <action android:name="android.service.notification.NotificationListenerService" />
