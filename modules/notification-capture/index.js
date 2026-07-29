@@ -11,6 +11,8 @@ const STUB = {
   updateDraftStatus: async () => false,
   deleteDraft: async () => false,
   clearDrafts: async () => false,
+  getLastError: () => null,
+  clearLastError: async () => false,
 };
 
 let nativeModule = null;
@@ -140,6 +142,32 @@ export async function clearDrafts() {
   }
 }
 
+export function getLastNativeError() {
+  try {
+    const raw = getNative().getLastError?.();
+    if (!raw) {
+      return null;
+    }
+    if (typeof raw === 'string') {
+      return { message: raw, at: null };
+    }
+    return {
+      message: raw.message != null ? String(raw.message) : '',
+      at: raw.at ? String(raw.at) : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function clearLastNativeError() {
+  try {
+    return !!(await getNative().clearLastError?.());
+  } catch {
+    return false;
+  }
+}
+
 export default {
   isNotificationCaptureSupported,
   isNotificationAccessEnabled,
@@ -151,4 +179,6 @@ export default {
   updateDraftStatus,
   deleteDraft,
   clearDrafts,
+  getLastNativeError,
+  clearLastNativeError,
 };

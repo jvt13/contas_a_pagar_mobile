@@ -15,6 +15,7 @@ import {
   openNotificationAccessSettings,
   syncFilterConfig,
   isNotificationCaptureSupported,
+  getLastNativeError,
 } from '../../modules/notification-capture';
 import { parseMensagemBancaria } from './parserMensagemBancaria';
 import { avaliarNotificacaoBancaria } from './filtrosNotificacaoBancaria';
@@ -142,6 +143,7 @@ export function obterStatusPermissao() {
     suporteNativo,
     permissaoConcedida: suporteNativo ? isNotificationAccessEnabled() : false,
     capturaAtiva: suporteNativo ? isCaptureEnabled() : false,
+    ultimoErroNativo: suporteNativo ? getLastNativeError() : null,
   };
 }
 

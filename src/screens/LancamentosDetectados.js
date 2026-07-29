@@ -282,6 +282,9 @@ export default function LancamentosDetectados() {
           <Text style={styles.ajudaPermissao}>
             Essa permissão não fica em “Permissões do app”. Em alguns celulares, procure em Configurações
             {' > '}Apps {'> '}Acesso especial {'> '}Acesso a notificações e habilite OrganizeContas.
+            {'\n'}
+            Se o Android disser que o app apresenta falhas, desative o acesso a notificações, reinstale o APK
+            corrigido e tente de novo.
           </Text>
 
           <View style={styles.statusLinha}>

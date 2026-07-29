@@ -6,13 +6,17 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import expo.modules.kotlin.exception.Exceptions
+import android.util.Log
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 
 class NotificationCaptureModule : Module() {
-  private val context
-    get() = appContext.reactContext ?: throw Exceptions.ReactContextLost()
+  private val contextOrNull
+    get() = try {
+      appContext.reactContext
+    } catch (_: Throwable) {
+      null
+    }
 
   override fun definition() = ModuleDefinition {
     Name("NotificationCapture")
@@ -22,49 +26,116 @@ class NotificationCaptureModule : Module() {
     }
 
     Function("isNotificationAccessEnabled") {
-      isListenerEnabled()
+      try {
+        isListenerEnabled()
+      } catch (t: Throwable) {
+        Log.e(TAG, "isNotificationAccessEnabled falhou", t)
+        false
+      }
     }
 
     AsyncFunction("openNotificationAccessSettings") {
-      openListenerSettings()
+      try {
+        openListenerSettings()
+      } catch (t: Throwable) {
+        Log.e(TAG, "openNotificationAccessSettings falhou", t)
+        false
+      }
     }
 
     Function("isCaptureEnabled") {
-      NotificationDraftStore.isCaptureEnabled(context)
+      try {
+        val ctx = contextOrNull ?: return@Function false
+        NotificationDraftStore.isCaptureEnabled(ctx)
+      } catch (_: Throwable) {
+        false
+      }
     }
 
     AsyncFunction("setCaptureEnabled") { enabled: Boolean ->
-      NotificationDraftStore.setCaptureEnabled(context, enabled)
-      true
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        NotificationDraftStore.setCaptureEnabled(ctx, enabled)
+      } catch (_: Throwable) {
+        false
+      }
     }
 
     AsyncFunction("syncFilterConfig") { config: Map<String, Any?> ->
-      val modo = when (val v = config["modoAprendizado"]) {
-        is Boolean -> v
-        is Number -> v.toInt() != 0
-        else -> NotificationDraftStore.isModoAprendizado(context)
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        val modo = when (val v = config["modoAprendizado"]) {
+          is Boolean -> v
+          is Number -> v.toInt() != 0
+          else -> NotificationDraftStore.isModoAprendizado(ctx)
+        }
+        val pacotes = toStringList(config["pacotesPermitidos"])
+        val aliases = toStringList(config["aliasesBancarios"])
+        NotificationDraftStore.syncFilterConfig(ctx, modo, pacotes, aliases)
+      } catch (t: Throwable) {
+        Log.e(TAG, "syncFilterConfig falhou", t)
+        false
       }
-      val pacotes = toStringList(config["pacotesPermitidos"])
-      val aliases = toStringList(config["aliasesBancarios"])
-      NotificationDraftStore.syncFilterConfig(context, modo, pacotes, aliases)
-      true
     }
 
     Function("getDrafts") {
-      NotificationDraftStore.getDraftsJson(context)
+      try {
+        val ctx = contextOrNull ?: return@Function "[]"
+        NotificationDraftStore.getDraftsJson(ctx)
+      } catch (_: Throwable) {
+        "[]"
+      }
     }
 
     AsyncFunction("updateDraftStatus") { id: String, status: String ->
-      NotificationDraftStore.updateDraftStatus(context, id, status)
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        NotificationDraftStore.updateDraftStatus(ctx, id, status)
+      } catch (_: Throwable) {
+        false
+      }
     }
 
     AsyncFunction("deleteDraft") { id: String ->
-      NotificationDraftStore.deleteDraft(context, id)
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        NotificationDraftStore.deleteDraft(ctx, id)
+      } catch (_: Throwable) {
+        false
+      }
     }
 
     AsyncFunction("clearDrafts") {
-      NotificationDraftStore.clearDrafts(context)
-      true
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        NotificationDraftStore.clearDrafts(ctx)
+      } catch (_: Throwable) {
+        false
+      }
+    }
+
+    Function("getLastError") {
+      try {
+        val ctx = contextOrNull ?: return@Function null
+        val msg = NotificationDraftStore.getLastError(ctx) ?: return@Function null
+        val at = NotificationDraftStore.getLastErrorAt(ctx)
+        mapOf(
+          "message" to msg,
+          "at" to (at ?: "")
+        )
+      } catch (_: Throwable) {
+        null
+      }
+    }
+
+    AsyncFunction("clearLastError") {
+      try {
+        val ctx = contextOrNull ?: return@AsyncFunction false
+        NotificationDraftStore.clearLastError(ctx)
+        true
+      } catch (_: Throwable) {
+        false
+      }
     }
   }
 
@@ -73,9 +144,9 @@ class NotificationCaptureModule : Module() {
    * Nunca usa ACTION_APPLICATION_DETAILS_SETTINGS (Informações do app).
    */
   private fun openListenerSettings(): Boolean {
-    val component = ComponentName(context, NotificationCaptureService::class.java)
+    val ctx = contextOrNull ?: return false
+    val component = ComponentName(ctx, NotificationCaptureService::class.java)
 
-    // API 30+: tela detalhada só do nosso listener
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
       val detail = Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS).apply {
         putExtra(
@@ -89,7 +160,6 @@ class NotificationCaptureModule : Module() {
       }
     }
 
-    // Lista geral de apps com acesso a notificações (+ highlight em alguns OEMs)
     val listIntent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       val key = ":settings:fragment_args_key"
@@ -104,7 +174,6 @@ class NotificationCaptureModule : Module() {
       return true
     }
 
-    // Último recurso: mesma action sem extras (alguns ROMs rejeitam extras)
     val plain = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
       addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
@@ -113,11 +182,16 @@ class NotificationCaptureModule : Module() {
 
   private fun startSafely(intent: Intent): Boolean {
     return try {
-      val activity = appContext.currentActivity
+      val activity = try {
+        appContext.currentActivity
+      } catch (_: Throwable) {
+        null
+      }
+      val ctx = contextOrNull ?: return false
       if (activity != null) {
         activity.startActivity(intent)
       } else {
-        context.startActivity(intent)
+        ctx.startActivity(intent)
       }
       true
     } catch (_: Exception) {
@@ -126,11 +200,12 @@ class NotificationCaptureModule : Module() {
   }
 
   private fun isListenerEnabled(): Boolean {
-    val component = ComponentName(context, NotificationCaptureService::class.java)
+    val ctx = contextOrNull ?: return false
+    val component = ComponentName(ctx, NotificationCaptureService::class.java)
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
       try {
-        val nm = context.getSystemService(NotificationManager::class.java)
+        val nm = ctx.getSystemService(NotificationManager::class.java)
         if (nm != null && nm.isNotificationListenerAccessGranted(component)) {
           return true
         }
@@ -139,33 +214,46 @@ class NotificationCaptureModule : Module() {
       }
     }
 
-    val flat = Settings.Secure.getString(
-      context.contentResolver,
-      "enabled_notification_listeners"
-    )
+    val flat = try {
+      Settings.Secure.getString(ctx.contentResolver, "enabled_notification_listeners")
+    } catch (_: Throwable) {
+      null
+    }
     if (flat.isNullOrBlank()) {
       return false
     }
 
     val targetFlat = component.flattenToString()
-    val pkg = context.packageName
+    val pkg = ctx.packageName
     val className = NotificationCaptureService::class.java.name
 
     return flat.split(":").any { entry ->
-      if (entry.equals(targetFlat, ignoreCase = true)) {
-        return@any true
+      try {
+        if (entry.equals(targetFlat, ignoreCase = true)) {
+          return@any true
+        }
+        val cn = ComponentName.unflattenFromString(entry) ?: return@any false
+        cn.packageName.equals(pkg, ignoreCase = true) &&
+          cn.className.equals(className, ignoreCase = true)
+      } catch (_: Throwable) {
+        false
       }
-      val cn = ComponentName.unflattenFromString(entry) ?: return@any false
-      cn.packageName.equals(pkg, ignoreCase = true) &&
-        cn.className.equals(className, ignoreCase = true)
     }
   }
 
   private fun toStringList(value: Any?): List<String> {
-    return when (value) {
-      is List<*> -> value.mapNotNull { it?.toString()?.trim() }.filter { it.isNotEmpty() }
-      is Array<*> -> value.mapNotNull { it?.toString()?.trim() }.filter { it.isNotEmpty() }
-      else -> emptyList()
+    return try {
+      when (value) {
+        is List<*> -> value.mapNotNull { it?.toString()?.trim() }.filter { it.isNotEmpty() }
+        is Array<*> -> value.mapNotNull { it?.toString()?.trim() }.filter { it.isNotEmpty() }
+        else -> emptyList()
+      }
+    } catch (_: Throwable) {
+      emptyList()
     }
+  }
+
+  companion object {
+    private const val TAG = "NotificationCaptureMod"
   }
 }
