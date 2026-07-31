@@ -17,11 +17,13 @@ import {
   isNotificationCaptureSupported,
   getLastNativeError,
 } from '../../modules/notification-capture';
+import { getDados } from './services';
 import { parseMensagemBancaria } from './parserMensagemBancaria';
 import { avaliarNotificacaoBancaria } from './filtrosNotificacaoBancaria';
 import {
   listarAliasesBancarios,
-  listarPacotesConhecidos,
+  listarBancosMonitoradosPorCartoes,
+  montarPacotesPermitidosPorCartoes,
   resolverAppBancario,
 } from './appsBancariosNotificacao';
 
@@ -43,10 +45,26 @@ function parseDraftsRaw(raw) {
   return [];
 }
 
+function metadadosDoRascunho(draft) {
+  return {
+    pacote: draft?.pacote || draft?.pacoteOrigem || null,
+    pacoteOrigem: draft?.pacoteOrigem || draft?.pacote || null,
+    appName: draft?.appName || draft?.appOrigem || null,
+    bancoInferido: draft?.bancoInferido || null,
+    recebidoEm: draft?.recebidoEm || null,
+    postTime: draft?.postTime || null,
+    postTimeMillis: draft?.postTimeMillis || null,
+    timestamp: draft?.timestamp || null,
+    dedupeKey: draft?.dedupeKey || null,
+    origem: draft?.origem || null,
+  };
+}
+
 function enriquecerRascunho(draft) {
   const texto =
     draft?.textoSanitizado ||
-    [draft?.titulo, draft?.textoSanitizado].filter(Boolean).join('\n');
+    draft?.mensagemOriginal ||
+    [draft?.titulo, draft?.texto, draft?.bigText].filter(Boolean).join('\n');
 
   const filtro = avaliarNotificacaoBancaria({
     titulo: draft?.titulo,
@@ -54,21 +72,28 @@ function enriquecerRascunho(draft) {
   });
 
   const appInfo = resolverAppBancario({
-    pacoteOrigem: draft?.pacoteOrigem,
-    appOrigem: draft?.appOrigem,
+    pacoteOrigem: draft?.pacoteOrigem || draft?.pacote,
+    appOrigem: draft?.appOrigem || draft?.appName,
     titulo: draft?.titulo,
     texto,
   });
 
   let preLancamento = draft?.preLancamento || null;
+  if (
+    preLancamento &&
+    typeof preLancamento === 'object' &&
+    Object.keys(preLancamento).length === 0
+  ) {
+    preLancamento = null;
+  }
+
   if (!preLancamento && filtro.aceitar && texto) {
-    preLancamento = parseMensagemBancaria(texto);
+    preLancamento = parseMensagemBancaria(texto, metadadosDoRascunho(draft));
     if (preLancamento) {
       preLancamento = {
         ...preLancamento,
         origem: 'notification_listener',
       };
-      // Se o parser não achou banco, tenta pelo catálogo de pacote/alias
       if (!preLancamento.banco?.slug && appInfo?.slug) {
         preLancamento = {
           ...preLancamento,
@@ -84,7 +109,8 @@ function enriquecerRascunho(draft) {
 
   return {
     ...draft,
-    appCatalogo: appInfo?.nome || null,
+    textoSanitizado: texto,
+    appCatalogo: appInfo?.nome || draft?.bancoInferido || draft?.appName || null,
     bancoSlug: appInfo?.slug || preLancamento?.banco?.slug || null,
     filtroOk: filtro.aceitar,
     filtroMotivo: filtro.motivo || null,
@@ -98,15 +124,39 @@ function enriquecerRascunho(draft) {
   };
 }
 
+export async function carregarCartoesParaCaptura() {
+  try {
+    const keyShareId = await AsyncStorage.getItem('@userKeyShareId');
+    if (!keyShareId) {
+      return [];
+    }
+    const res = await getDados(`/get_cartoes?orgaId=${keyShareId}`);
+    if (res?.success && Array.isArray(res.data)) {
+      return res.data;
+    }
+    if (Array.isArray(res?.data)) {
+      return res.data;
+    }
+    if (Array.isArray(res?.result)) {
+      return res.result;
+    }
+    return [];
+  } catch (error) {
+    console.warn('[lancamentosDetectados] falha ao carregar cartões:', error?.message || error);
+    return [];
+  }
+}
+
 export async function obterModoAprendizado() {
   try {
     const v = await AsyncStorage.getItem(KEY_MODO_APRENDIZADO);
     if (v == null) {
-      return true;
+      // Modo restrito por padrão: não polui rascunhos de lançamento.
+      return false;
     }
     return v === '1' || v === 'true';
   } catch {
-    return true;
+    return false;
   }
 }
 
@@ -115,11 +165,36 @@ export async function definirModoAprendizado(enabled) {
   await sincronizarConfigNativa();
 }
 
-export async function sincronizarConfigNativa() {
+/**
+ * Sincroniza allowlist nativa com cartões cadastrados.
+ * Modo aprendizado permanece no toggle, mas não libera pacotes fora da allowlist.
+ */
+export async function sincronizarConfigNativa(cartoesOpcionais = null) {
   const modoAprendizado = await obterModoAprendizado();
+  const cartoes = Array.isArray(cartoesOpcionais)
+    ? cartoesOpcionais
+    : await carregarCartoesParaCaptura();
+  const pacotesPermitidos = montarPacotesPermitidosPorCartoes(cartoes);
+  const bancosMonitorados = listarBancosMonitoradosPorCartoes(cartoes);
+
   await syncFilterConfig({
     modoAprendizado,
-    pacotesPermitidos: listarPacotesConhecidos(),
+    pacotesPermitidos,
+    aliasesBancarios: listarAliasesBancarios(),
+  });
+
+  return {
+    cartoes,
+    pacotesPermitidos,
+    bancosMonitorados,
+  };
+}
+
+export async function setAllowedPackages(packages = []) {
+  const modoAprendizado = await obterModoAprendizado();
+  return syncFilterConfig({
+    modoAprendizado,
+    pacotesPermitidos: Array.isArray(packages) ? packages : [],
     aliasesBancarios: listarAliasesBancarios(),
   });
 }
@@ -148,7 +223,7 @@ export function obterStatusPermissao() {
 }
 
 export async function listarRascunhosDetectados({ apenasPendentes = true } = {}) {
-  await sincronizarConfigNativa();
+  const sync = await sincronizarConfigNativa();
   const drafts = parseDraftsRaw(getNativeDrafts()).map(enriquecerRascunho);
 
   let lista = drafts;
@@ -156,11 +231,17 @@ export async function listarRascunhosDetectados({ apenasPendentes = true } = {})
     lista = drafts.filter((d) => d.status === 'pendente' && d.filtroOk !== false);
   }
 
-  return lista.sort((a, b) => {
+  const ordenados = lista.sort((a, b) => {
     const ta = Date.parse(a.recebidoEm || a.criadoEm || 0) || 0;
     const tb = Date.parse(b.recebidoEm || b.criadoEm || 0) || 0;
     return tb - ta;
   });
+
+  return {
+    rascunhos: ordenados,
+    pacotesPermitidos: sync.pacotesPermitidos,
+    bancosMonitorados: sync.bancosMonitorados,
+  };
 }
 
 export async function marcarRascunhoImportado(id) {
@@ -188,6 +269,8 @@ export {
   isNotificationAccessEnabled,
   openNotificationAccessSettings,
   isNotificationCaptureSupported,
+  montarPacotesPermitidosPorCartoes,
+  listarBancosMonitoradosPorCartoes,
 };
 
 export default {

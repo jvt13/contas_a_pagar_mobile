@@ -1,6 +1,27 @@
-# Pasta nativa local (EAS gera via prebuild na nuvem)
-android/
-ios/
+# Dependências e artefatos locais
+node_modules/
+.expo/
+dist/
+web-build/
+
+# Pastas nativas geradas apenas na raiz (preserva modules/*/android/)
+/android/
+/ios/
 
 # Backend embutido no repo — nao faz parte do app mobile
 api-contas-a-pagar/
+
+# Segredos e credenciais locais
+.env
+.env*.local
+*.jks
+*.p8
+*.p12
+*.key
+*.pem
+*.mobileprovision
+
+# Logs e arquivos temporários
+*.log
+*.dump
+*.tsbuildinfo

@@ -128,8 +128,31 @@ function extrairValor(texto) {
   return { valor: parseados[0].valor, ambiguidades };
 }
 
-function extrairBanco(textoNorm, textoOriginal) {
+function extrairBanco(textoNorm, textoOriginal, metadados = {}) {
   const catalogo = listarBancos();
+  const pacote = String(metadados?.pacote || metadados?.pacoteOrigem || '').toLowerCase();
+  const bancoInferido = normalizar(metadados?.bancoInferido || metadados?.appName || '');
+
+  if (
+    pacote === 'com.mercadopago.wallet' ||
+    bancoInferido.includes('mercado pago') ||
+    textoNorm.includes('mercado pago')
+  ) {
+    return {
+      nome: 'Mercado Pago',
+      slug: 'mercado_pago',
+      confianca: 0.95,
+    };
+  }
+
+  if (pacote === 'com.picpay' || bancoInferido.includes('picpay')) {
+    const picPay = catalogo.find((b) => b.slug === 'picpay');
+    return {
+      nome: picPay?.nome || 'PicPay',
+      slug: 'picpay',
+      confianca: 0.98,
+    };
+  }
 
   for (const alias of ALIASES_BANCO) {
     for (const nome of alias.nomes) {
@@ -175,14 +198,15 @@ function extrairTipoEForma(textoNorm) {
   let formaPagamento = 'desconhecida';
 
   const temPix = /\bpix\b/.test(textoNorm);
-  const temCredito = /cartao de credito|\bcredito\b|no credito/.test(textoNorm);
+  const temCredito =
+    /cartao de credito|\bcredito\b|no credito|proxima fatura|cartao mercado pago/.test(textoNorm);
   const temDebito = /cartao de debito|\bdebito\b|no debito/.test(textoNorm);
   // "Card" (ex.: PicPay Card) e "cartão" sem qualificador → crédito (usuário revisa)
   const temCartaoGenerico = /\bcartao\b|\bcard\b/.test(textoNorm);
   const temTransferencia = /\btransferencia\b|\bted\b|\bdoc\b/.test(textoNorm);
-  const temPagamento = /\bpagamento\b/.test(textoNorm);
+  const temPagamento = /\bpagamento\b|\bpagou\b/.test(textoNorm);
   const temRecebimento = /\brecebimento\b|\brecebido\b|\brecebeu\b/.test(textoNorm);
-  const temCompra = /\bcompra\b|\baprovad/.test(textoNorm);
+  const temCompra = /\bcompra\b|\baprovad|\btransacao aprovada|\bpagou\b/.test(textoNorm);
 
   if (temPix) {
     tipo = 'pix';
@@ -246,7 +270,34 @@ const MESES_PT = {
 const RE_MES_PT =
   'jan(?:eiro)?|fev(?:ereiro)?|mar(?:co)?|abr(?:il)?|mai(?:o)?|jun(?:ho)?|jul(?:ho)?|ago(?:sto)?|set(?:embro)?|out(?:ubro)?|nov(?:embro)?|dez(?:embro)?';
 
-function extrairDataHora(texto, textoNorm) {
+function extrairDataHoraFallback(metadados = {}) {
+  const raw =
+    metadados?.recebidoEm ??
+    metadados?.postTime ??
+    metadados?.postTimeMillis ??
+    metadados?.timestamp;
+
+  if (raw == null || raw === '') {
+    return { dataISO: null, hora: null };
+  }
+
+  let value = raw;
+  if (typeof value === 'number' && value > 0 && value < 1e12) {
+    value *= 1000;
+  }
+
+  const data = new Date(value);
+  if (Number.isNaN(data.getTime())) {
+    return { dataISO: null, hora: null };
+  }
+
+  return {
+    dataISO: dataLocalParaISO(data.getFullYear(), data.getMonth() + 1, data.getDate()),
+    hora: `${pad2(data.getHours())}:${pad2(data.getMinutes())}`,
+  };
+}
+
+function extrairDataHora(texto, textoNorm, metadados = {}) {
   const avisos = [];
   const agora = new Date();
   const anoAtual = agora.getFullYear();
@@ -324,12 +375,21 @@ function extrairDataHora(texto, textoNorm) {
     }
   }
 
+  if (!dataISO) {
+    const fallback = extrairDataHoraFallback(metadados);
+    dataISO = fallback.dataISO;
+    hora = hora || fallback.hora;
+  }
+
   return { dataISO, hora, avisos };
 }
 
 function sanitizarEstabelecimento(nome) {
   return String(nome || '')
+    .replace(/\s+foi(?:\s+aprovad[ao])?\.?\s*$/i, '')
+    .replace(/\s+aprovad[ao]\.?\s*$/i, '')
     .replace(/\*/g, ' ')
+    .replace(/[.\s]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -354,6 +414,13 @@ function estabelecimentoValido(nome) {
 
 function extrairEstabelecimento(texto, textoNorm) {
   const padroes = [
+    // Mercado Pago: "Você pagou R$ 1 a JIM.COM ...\nO valor vai entrar..."
+    /voce\s+pagou\s+r\$\s*[\d.,]+\s+a\s+([^\r\n]+)/i,
+    /você\s+pagou\s+r\$\s*[\d.,]+\s+a\s+([^\r\n]+)/i,
+    // Genérico: "Compra aprovada de R$ X em ESTABELECIMENTO"
+    /compra\s+aprovad[ao]\s+de\s+r\$\s*[\d.,]+\s+em\s+(.+?)(?:\.|$)/i,
+    // PicPay débito: "Compra de R$ 1,00 em Mp *jvtech foi APROVADA."
+    /(?:compra|pagamento)\s+de\s+r\$\s*[\d.,]+\s+em\s+(.+?)\s+foi\s+APROVAD[AO]\.?/i,
     // PicPay / similares: "em Pg *dom Cashbacker APROVADA"
     /\bem\s+(.+?)\s+APROVAD[AO]/i,
     // "Compra de R$ X em ESTABELECIMENTO"
@@ -473,7 +540,8 @@ function calcularConfianca({
     score = Math.max(0, score - 0.1);
   }
 
-  score = Math.round(Math.min(1, Math.max(0, score)) * 100) / 100;
+  // Cartão e categoria continuam manuais; não anunciar confiança total.
+  score = Math.round(Math.min(0.9, Math.max(0, score)) * 100) / 100;
 
   let nivel = 'baixa';
   if (score >= 0.75) {
@@ -487,9 +555,10 @@ function calcularConfianca({
 
 /**
  * @param {string} texto
+ * @param {object} [metadados] pacote/app/timestamp da origem local
  * @returns {object} PreLancamento (sem texto bruto)
  */
-export function parseMensagemBancaria(texto) {
+export function parseMensagemBancaria(texto, metadados = {}) {
   const textoOriginal = String(texto || '').trim();
   const avisos = [];
   const ambiguidades = [];
@@ -533,13 +602,17 @@ export function parseMensagemBancaria(texto) {
   const { valor, ambiguidades: ambValor } = extrairValor(textoOriginal);
   ambiguidades.push(...ambValor);
 
-  const banco = extrairBanco(textoNorm, textoOriginal);
+  const banco = extrairBanco(textoNorm, textoOriginal, metadados);
   const { tipo, formaPagamento, ambiguoForma } = extrairTipoEForma(textoNorm);
   if (ambiguoForma) {
     ambiguidades.push('forma_pagamento_ambigua');
   }
 
-  const { dataISO, hora, avisos: avisosData } = extrairDataHora(textoOriginal, textoNorm);
+  const { dataISO, hora, avisos: avisosData } = extrairDataHora(
+    textoOriginal,
+    textoNorm,
+    metadados
+  );
   avisos.push(...avisosData);
 
   const estabelecimento = extrairEstabelecimento(textoOriginal, textoNorm);

@@ -11,7 +11,10 @@ import {
 } from 'react-native';
 import AppIcon, { ModalCloseButton } from '../AppIcon';
 import { parseMensagemBancaria } from '../../utils/parserMensagemBancaria';
-import { mapPreLancamentoParaInitialValues } from '../../utils/mapPreLancamentoParaInitialValues';
+import {
+  mapPreLancamentoParaInitialValues,
+  resolverCartaoSugerido,
+} from '../../utils/mapPreLancamentoParaInitialValues';
 import useCartaoManager from '../../hooks/useCartaoManager';
 
 const NIVEL_COR = {
@@ -52,12 +55,40 @@ function formatarTipo(tipo) {
   }
 }
 
+function atualizarStatusCartao(preLancamento, cartoes) {
+  if (!preLancamento?.confianca) {
+    return preLancamento;
+  }
+
+  const { id } = resolverCartaoSugerido(preLancamento, cartoes);
+  const detectados = new Set(preLancamento.confianca.camposDetectados || []);
+  const faltantes = new Set(preLancamento.confianca.camposFaltantes || []);
+
+  if (id) {
+    detectados.add('cartao');
+    faltantes.delete('cartao');
+  } else {
+    detectados.delete('cartao');
+    faltantes.add('cartao');
+  }
+
+  return {
+    ...preLancamento,
+    confianca: {
+      ...preLancamento.confianca,
+      camposDetectados: [...detectados],
+      camposFaltantes: [...faltantes],
+    },
+  };
+}
+
 export default function ModalImportarMensagem({
   visible,
   onClose,
   onContinuar,
   textoInicial = '',
   preLancamentoInicial = null,
+  metadadosIniciais = null,
 }) {
   const [texto, setTexto] = useState('');
   const [preLancamento, setPreLancamento] = useState(null);
@@ -67,19 +98,26 @@ export default function ModalImportarMensagem({
     if (!visible) {
       return;
     }
-    carregarCartoes();
+    let ativo = true;
 
-    const inicial = String(textoInicial || '').trim();
-    if (preLancamentoInicial) {
+    const preparar = async () => {
+      const listaCartoes = (await carregarCartoes()) || [];
+      if (!ativo) return;
+
+      const inicial = String(textoInicial || '').trim();
       setTexto(inicial);
-      setPreLancamento(preLancamentoInicial);
-      return;
-    }
-    if (inicial) {
-      setTexto(inicial);
-      setPreLancamento(parseMensagemBancaria(inicial));
-    }
-  }, [visible, textoInicial, preLancamentoInicial]);
+
+      const resultado =
+        preLancamentoInicial ||
+        (inicial ? parseMensagemBancaria(inicial, metadadosIniciais || {}) : null);
+      setPreLancamento(atualizarStatusCartao(resultado, listaCartoes));
+    };
+
+    preparar();
+    return () => {
+      ativo = false;
+    };
+  }, [visible, textoInicial, preLancamentoInicial, metadadosIniciais]);
 
   const limparEstado = () => {
     setTexto('');
@@ -99,7 +137,10 @@ export default function ModalImportarMensagem({
       return;
     }
 
-    const resultado = parseMensagemBancaria(bruto);
+    const resultado = atualizarStatusCartao(
+      parseMensagemBancaria(bruto, metadadosIniciais || {}),
+      cartoes
+    );
     setPreLancamento(resultado);
 
     if (resultado?.transacao?.valor == null) {

@@ -10,6 +10,14 @@ import { formatarDataBR, validarVencimentoConta } from './util';
 const CONFIANCA_BANCO_MIN = 0.75;
 
 function slugDoCartao(cartao) {
+  const nomeNormalizado = String(cartao?.nome || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (nomeNormalizado.includes('mercado pago')) {
+    return 'mercado_pago';
+  }
+
   const info = resolverBancoParaCartao(cartao);
   if (info?.slug && info.slug !== 'outro') {
     return info.slug;
@@ -69,24 +77,7 @@ export function resolverCartaoSugerido(preLancamento, cartoes = []) {
       return { id: null, avisos };
     }
 
-    // Nenhum do tipo desejado: se sobrar exatamente um do banco, sugere com aviso
-    if (candidatos.length === 1) {
-      const unico = candidatos[0];
-      const tipoCartao = String(unico?.tipo_cartao || '').toLowerCase();
-      if (tipoCartao && tipoCartao !== tipoDesejado) {
-        avisos.push(
-          `O cartão encontrado é ${tipoCartao}, mas a mensagem sugere ${tipoDesejado}. Confirme antes de salvar.`
-        );
-      }
-      return { id: String(unico.id), avisos };
-    }
-
-    if (candidatos.length === 0) {
-      avisos.push('Nenhum cartão cadastrado compatível com o banco detectado.');
-      return { id: null, avisos };
-    }
-
-    avisos.push('Há mais de um cartão compatível. Selecione o cartão manualmente.');
+    avisos.push('Nenhum cartão do banco e tipo detectados foi encontrado. Selecione o cartão manualmente.');
     return { id: null, avisos };
   }
 

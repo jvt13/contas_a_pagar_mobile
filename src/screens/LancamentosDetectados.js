@@ -109,6 +109,8 @@ export default function LancamentosDetectados() {
     loading,
     status,
     modoAprendizado,
+    bancosMonitorados,
+    pacotesPermitidos,
     recarregar,
     ativar,
     desativar,
@@ -124,6 +126,7 @@ export default function LancamentosDetectados() {
   const [modalNovaContaVisible, setModalNovaContaVisible] = useState(false);
   const [textoImportacao, setTextoImportacao] = useState('');
   const [preLancamentoInicial, setPreLancamentoInicial] = useState(null);
+  const [metadadosImportacao, setMetadadosImportacao] = useState(null);
   const [rascunhoEmFluxoId, setRascunhoEmFluxoId] = useState(null);
   const [initialValuesConta, setInitialValuesConta] = useState(null);
   const [origemPreenchimento, setOrigemPreenchimento] = useState(null);
@@ -193,6 +196,18 @@ export default function LancamentosDetectados() {
     setRascunhoEmFluxoId(item.id);
     setTextoImportacao(texto);
     setPreLancamentoInicial(item.preLancamento || null);
+    setMetadadosImportacao({
+      pacote: item.pacote || item.pacoteOrigem || null,
+      pacoteOrigem: item.pacoteOrigem || item.pacote || null,
+      appName: item.appName || item.appOrigem || null,
+      bancoInferido: item.bancoInferido || null,
+      recebidoEm: item.recebidoEm || null,
+      postTime: item.postTime || null,
+      postTimeMillis: item.postTimeMillis || null,
+      timestamp: item.timestamp || null,
+      dedupeKey: item.dedupeKey || null,
+      origem: item.origem || null,
+    });
     setContaSelecionada(null);
     setInitialValuesConta(null);
     setOrigemPreenchimento(null);
@@ -264,8 +279,9 @@ export default function LancamentosDetectados() {
           <View style={styles.avisoTextoWrap}>
             <Text style={styles.avisoTitulo}>Este recurso é experimental.</Text>
             <Text style={styles.avisoTexto}>
-              O OrganizeContas pode acessar notificações do aparelho enquanto a permissão estiver ativa. O app
-              tenta filtrar apenas notificações financeiras. O texto detectado fica salvo apenas neste aparelho.
+              O OrganizeContas pode acessar notificações do aparelho enquanto a permissão estiver ativa.
+              A captura automática salva rascunhos apenas de bancos/cartões cadastrados no app. Notificações
+              de outros bancos são ignoradas para evitar rascunhos indevidos. O texto fica só neste aparelho.
               Nada é enviado ao servidor. Você sempre revisa antes de criar um lançamento.
             </Text>
           </View>
@@ -280,11 +296,23 @@ export default function LancamentosDetectados() {
           </Text>
 
           <Text style={styles.ajudaPermissao}>
+            Captura experimental ativa: o app salva localmente notificações financeiras detectadas para
+            revisão manual. Nada é lançado automaticamente.
+            {'\n\n'}
+            A captura automática salva rascunhos apenas de bancos/cartões cadastrados no app. Notificações
+            de outros bancos são ignoradas para evitar rascunhos indevidos.
+            {'\n\n'}
+            {bancosMonitorados.length
+              ? `Bancos monitorados: ${bancosMonitorados.join(', ')}`
+              : 'Nenhum banco monitorado. Cadastre um cartão compatível para ativar a captura automática.'}
+            {pacotesPermitidos.length
+              ? `\nPacotes monitorados: ${pacotesPermitidos.length}`
+              : ''}
+            {'\n\n'}
             Essa permissão não fica em “Permissões do app”. Em alguns celulares, procure em Configurações
             {' > '}Apps {'> '}Acesso especial {'> '}Acesso a notificações e habilite OrganizeContas.
             {'\n'}
-            Se o Android disser que o app apresenta falhas, desative o acesso a notificações, reinstale o APK
-            corrigido e tente de novo.
+            Em APK instalado manualmente, o Android pode exigir “Permitir configurações restritas”.
           </Text>
 
           <View style={styles.statusLinha}>
@@ -311,7 +339,8 @@ export default function LancamentosDetectados() {
             <View style={styles.switchTexto}>
               <Text style={styles.switchTitulo}>Modo aprendizado</Text>
               <Text style={styles.switchSub}>
-                Registra pacote + título/texto localmente para descobrir apps bancários no teste.
+                Mantido para diagnóstico futuro. Nesta versão não libera rascunhos fora dos cartões
+                cadastrados.
               </Text>
             </View>
             <Switch
@@ -383,13 +412,16 @@ export default function LancamentosDetectados() {
           setModalImportarVisible(false);
           setTextoImportacao('');
           setPreLancamentoInicial(null);
+          setMetadadosImportacao(null);
         }}
         textoInicial={textoImportacao}
         preLancamentoInicial={preLancamentoInicial}
+        metadadosIniciais={metadadosImportacao}
         onContinuar={(values) => {
           setModalImportarVisible(false);
           setTextoImportacao('');
           setPreLancamentoInicial(null);
+          setMetadadosImportacao(null);
           setContaSelecionada(null);
           setInitialValuesConta(values || null);
           setOrigemPreenchimento('notification_listener');

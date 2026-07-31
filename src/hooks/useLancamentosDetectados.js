@@ -26,27 +26,34 @@ export default function useLancamentosDetectados() {
     permissaoConcedida: false,
     capturaAtiva: false,
   });
-  const [modoAprendizado, setModoAprendizado] = useState(true);
+  const [modoAprendizado, setModoAprendizado] = useState(false);
+  const [bancosMonitorados, setBancosMonitorados] = useState([]);
+  const [pacotesPermitidos, setPacotesPermitidos] = useState([]);
 
   const recarregar = useCallback(async () => {
     if (Platform.OS !== 'android') {
       setRascunhos([]);
+      setBancosMonitorados([]);
+      setPacotesPermitidos([]);
       setStatus({ permissaoConcedida: false, capturaAtiva: false });
       return;
     }
     setLoading(true);
     try {
-      await sincronizarConfigNativa();
-      const [lista, modo] = await Promise.all([
+      const [resultado, modo] = await Promise.all([
         listarRascunhosDetectados({ apenasPendentes: false }),
         obterModoAprendizado(),
       ]);
-      setRascunhos(lista);
+      setRascunhos(resultado?.rascunhos || []);
+      setBancosMonitorados(resultado?.bancosMonitorados || []);
+      setPacotesPermitidos(resultado?.pacotesPermitidos || []);
       setModoAprendizado(modo);
       setStatus(obterStatusPermissao());
     } catch (error) {
       console.error('Erro ao carregar lançamentos detectados:', error);
       setRascunhos([]);
+      setBancosMonitorados([]);
+      setPacotesPermitidos([]);
       setStatus(obterStatusPermissao());
     } finally {
       setLoading(false);
@@ -65,7 +72,6 @@ export default function useLancamentosDetectados() {
 
   const abrirPermissaoAndroid = useCallback(async () => {
     const ok = await abrirConfiguracaoAcessoNotificacoes();
-    // Reconsulta status ao voltar (usuário pode ter habilitado)
     setTimeout(() => {
       recarregar();
     }, 600);
@@ -75,6 +81,7 @@ export default function useLancamentosDetectados() {
   const alternarModoAprendizado = useCallback(
     async (valor) => {
       await definirModoAprendizado(!!valor);
+      await sincronizarConfigNativa();
       await recarregar();
     },
     [recarregar]
@@ -117,6 +124,8 @@ export default function useLancamentosDetectados() {
     loading,
     status,
     modoAprendizado,
+    bancosMonitorados,
+    pacotesPermitidos,
     recarregar,
     ativar,
     desativar,

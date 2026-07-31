@@ -7,6 +7,7 @@ const STUB = {
   isCaptureEnabled: () => false,
   setCaptureEnabled: async () => false,
   syncFilterConfig: async () => false,
+  setAllowedPackages: async () => false,
   getDrafts: () => [],
   updateDraftStatus: async () => false,
   deleteDraft: async () => false,
@@ -102,6 +103,20 @@ export async function syncFilterConfig(config = {}) {
   }
 }
 
+/**
+ * Atualiza a allowlist de pacotes no nativo (SharedPreferences).
+ * @param {string[]} packages
+ */
+export async function setAllowedPackages(packages = []) {
+  try {
+    return !!(await getNative().syncFilterConfig({
+      pacotesPermitidos: Array.isArray(packages) ? packages : [],
+    }));
+  } catch {
+    return false;
+  }
+}
+
 export function getNativeDrafts() {
   try {
     const raw = getNative().getDrafts();
@@ -175,6 +190,7 @@ export default {
   isCaptureEnabled,
   setCaptureEnabled,
   syncFilterConfig,
+  setAllowedPackages,
   getNativeDrafts,
   updateDraftStatus,
   deleteDraft,

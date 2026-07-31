@@ -52,6 +52,22 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-07-30 — Allowlist por cartões na captura experimental (versionCode 18)
+
+- **Tipo**: Mudança de convenção + alteração de módulo nativo + util/catálogo.
+- **Descrição**: A captura automática passa a salvar rascunhos **somente** quando o pacote da notificação está na allowlist montada a partir dos cartões cadastrados (`montarPacotesPermitidosPorCartoes` → `syncFilterConfig` / SharedPreferences `pacotes_permitidos`). Catálogo inicial de pacotes BR expandido; PicPay e Mercado Pago validados em teste real (InfinitePay na allowlist com cartão cadastrado, sem rascunho quando a notificação não era gasto). Sem cartão mapeado → allowlist vazia → nenhum rascunho. Modo aprendizado permanece no UI, mas não libera pacotes fora da allowlist. Sem SMS, sem backend, sem versionar `/android/` raiz; `.easignore` mantém `/android/` e `/ios/` com barra inicial. Feature consolidada em `versionCode` 18.
+- **Arquivos impactados**:
+  - `src/utils/appsBancariosNotificacao.js` (alterado — catálogo + allowlist)
+  - `src/utils/lancamentosDetectados.js` (alterado — sync com `/get_cartoes`)
+  - `src/hooks/useLancamentosDetectados.js`, `src/screens/LancamentosDetectados.js` (alterados — UI bancos monitorados)
+  - `modules/notification-capture/**` (alterado — filtro nativo por allowlist)
+  - `src/utils/parserMensagemBancaria.js`, `mapPreLancamentoParaInitialValues.js`, `ModalImportarMensagem.js` (alterados — preservação PicPay/MP)
+  - `app.json` (alterado — `versionCode` 17), `.easignore`, docs
+  - `src/utils/parserMensagemBancaria.test.cjs` (criado — regressão allowlist/parser)
+- **Endpoints afetados**: nenhum novo; reutiliza `GET /get_cartoes`.
+- **Impacto para consumidores**: menos rascunhos irrelevantes; captura exige cartão compatível cadastrado; **rebuild APK/EAS** necessário.
+- **Documentação atualizada**: `APP_OVERVIEW.md` §2, §6, §7; `PROJECT_STRUCTURE.md` (utils + §14); este changelog.
+
 ### 2026-07-28 — Captura experimental Android de notificações (rascunhos locais)
 
 - **Tipo**: Nova tela + Novo hook + Novo util + Módulo Expo local + Config plugin + Dependência.

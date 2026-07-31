@@ -64,13 +64,25 @@ class NotificationCaptureModule : Module() {
     AsyncFunction("syncFilterConfig") { config: Map<String, Any?> ->
       try {
         val ctx = contextOrNull ?: return@AsyncFunction false
-        val modo = when (val v = config["modoAprendizado"]) {
-          is Boolean -> v
-          is Number -> v.toInt() != 0
-          else -> NotificationDraftStore.isModoAprendizado(ctx)
+        val modo = when {
+          !config.containsKey("modoAprendizado") ->
+            NotificationDraftStore.isModoAprendizado(ctx)
+          else -> when (val v = config["modoAprendizado"]) {
+            is Boolean -> v
+            is Number -> v.toInt() != 0
+            else -> NotificationDraftStore.isModoAprendizado(ctx)
+          }
         }
-        val pacotes = toStringList(config["pacotesPermitidos"])
-        val aliases = toStringList(config["aliasesBancarios"])
+        val pacotes = if (config.containsKey("pacotesPermitidos")) {
+          toStringList(config["pacotesPermitidos"])
+        } else {
+          NotificationDraftStore.getPacotesPermitidos(ctx).toList()
+        }
+        val aliases = if (config.containsKey("aliasesBancarios")) {
+          toStringList(config["aliasesBancarios"])
+        } else {
+          NotificationDraftStore.getAliasesBancarios(ctx)
+        }
         NotificationDraftStore.syncFilterConfig(ctx, modo, pacotes, aliases)
       } catch (t: Throwable) {
         Log.e(TAG, "syncFilterConfig falhou", t)

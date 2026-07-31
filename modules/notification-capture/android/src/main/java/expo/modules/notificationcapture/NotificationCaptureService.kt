@@ -1,290 +1,341 @@
 package expo.modules.notificationcapture
 
 import android.app.Notification
-import android.content.pm.PackageManager
-import android.os.Build
+import android.content.Context
 import android.os.Bundle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
+import java.text.Normalizer
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
-/**
- * Serviço nativo de captura experimental.
- * Regra absoluta: nenhuma exceção pode escapar — o app não pode cair
- * por causa do NotificationListenerService.
- */
 class NotificationCaptureService : NotificationListenerService() {
-
   override fun onCreate() {
     try {
       super.onCreate()
+      Log.d("OCNotifListener", "onCreate")
     } catch (t: Throwable) {
-      Log.e(TAG, "onCreate falhou", t)
+      Log.e("OCNotifListener", "onCreate failed", t)
     }
   }
 
   override fun onListenerConnected() {
     try {
       super.onListenerConnected()
+      Log.d("OCNotifListener", "onListenerConnected")
     } catch (t: Throwable) {
-      Log.e(TAG, "onListenerConnected falhou", t)
-      NotificationDraftStore.recordLastError(applicationContext, "onListenerConnected: ${t.message}")
+      Log.e("OCNotifListener", "onListenerConnected failed", t)
     }
   }
 
   override fun onListenerDisconnected() {
     try {
       super.onListenerDisconnected()
+      Log.d("OCNotifListener", "onListenerDisconnected")
     } catch (t: Throwable) {
-      Log.e(TAG, "onListenerDisconnected falhou", t)
-    }
-  }
-
-  override fun onDestroy() {
-    try {
-      super.onDestroy()
-    } catch (t: Throwable) {
-      Log.e(TAG, "onDestroy falhou", t)
+      Log.e("OCNotifListener", "onListenerDisconnected failed", t)
     }
   }
 
   override fun onNotificationPosted(sbn: StatusBarNotification?) {
     try {
-      processNotificationPosted(sbn)
-    } catch (t: Throwable) {
-      Log.e(TAG, "Erro ao processar notificação", t)
-      try {
-        NotificationDraftStore.recordLastError(
-          applicationContext,
-          "onNotificationPosted: ${t.javaClass.simpleName}: ${t.message}"
-        )
+      Log.d("OCNotifListener", "onNotificationPosted")
+
+      val pacote = try {
+        sbn?.packageName
       } catch (_: Throwable) {
-        // ignore
+        null
+      }.orEmpty().ifBlank { "unknown.package" }.sanitize(200)
+
+      val prefs = applicationContext.getSharedPreferences(
+        "organizecontas_notification_capture",
+        Context.MODE_PRIVATE,
+      )
+
+      if (!prefs.getBoolean("capture_enabled", false)) {
+        Log.d("OCNotifListener", "capture disabled in app")
+        return
       }
+
+      val allowedPackages = readAllowedPackages(prefs)
+      if (allowedPackages.isEmpty()) {
+        Log.d("OCNotifListener", "no allowed packages configured — draft ignored")
+        return
+      }
+      if (!allowedPackages.contains(pacote.lowercase(Locale.ROOT))) {
+        Log.d("OCNotifListener", "package not allowed: $pacote")
+        return
+      }
+
+      val extras = try {
+        sbn?.notification?.extras
+      } catch (_: Throwable) {
+        null
+      }
+
+      val title = readExtra(extras, Notification.EXTRA_TITLE, 200)
+      val titleBig = readExtra(extras, Notification.EXTRA_TITLE_BIG, 200)
+      val text = readExtra(extras, Notification.EXTRA_TEXT, 500)
+      val subText = readExtra(extras, Notification.EXTRA_SUB_TEXT, 500)
+      val bigText = readExtra(extras, Notification.EXTRA_BIG_TEXT, 1_000)
+
+      val tituloFinal = title.ifBlank { titleBig }.ifBlank { "(sem título)" }
+      val textoFinal = text.ifBlank { subText }.ifBlank { "(sem texto)" }
+      val notificationText = listOf(title, titleBig, text, subText, bigText)
+        .filter { it.isNotBlank() }
+        .distinct()
+        .joinToString(" ")
+
+      val normalizedText = normalizeForFilter(notificationText)
+      val hasCurrency = Regex("""r\$\s*\d""", RegexOption.IGNORE_CASE)
+        .containsMatchIn(notificationText)
+      val transactionSignals = listOf(
+        "compra",
+        "comprou",
+        "pagou",
+        "aprovada",
+        "aprovado",
+        "debito",
+        "credito",
+        "cartao",
+        "pix",
+        "pagamento",
+        "fatura",
+      )
+      val hasTransactionSignal = transactionSignals.any { normalizedText.contains(it) }
+      val promotionalSignals = listOf(
+        "negocie cripto",
+        "cripto",
+        "promocao",
+        "oferta",
+        "cashback disponivel",
+        "invista",
+        "renda",
+        "emprestimo",
+        "limite aprovado",
+      )
+      val hasPromotionalSignal = promotionalSignals.any { normalizedText.contains(it) }
+      val hasConcreteTransaction = listOf(
+        "compra",
+        "comprou",
+        "pagou",
+        "pagamento",
+      ).any { normalizedText.contains(it) }
+
+      if (!hasCurrency || !hasTransactionSignal) {
+        Log.d("OCNotifListener", "notification ignored by light filter package=$pacote")
+        return
+      }
+
+      if (hasPromotionalSignal && !hasConcreteTransaction) {
+        Log.d("OCNotifListener", "promotional notification ignored package=$pacote")
+        return
+      }
+
+      val postTimeMillis = try {
+        sbn?.postTime?.takeIf { it > 0L }
+      } catch (_: Throwable) {
+        null
+      } ?: System.currentTimeMillis()
+      val detectedValue = Regex(
+        """r\$\s*\d+(?:[.,]\d+)*""",
+        RegexOption.IGNORE_CASE,
+      ).find(notificationText)?.value.orEmpty().sanitize(60)
+
+      saveNotificationDraft(
+        pacote = pacote,
+        titulo = tituloFinal,
+        texto = textoFinal,
+        bigText = bigText,
+        subText = subText,
+        titleBig = titleBig,
+        postTimeMillis = postTimeMillis,
+        detectedValue = detectedValue,
+        normalizedContent = normalizedText.sanitize(1_700),
+      )
+    } catch (t: Throwable) {
+      Log.e("OCNotifListener", "notification capture failed", t)
     }
   }
 
   override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-    // Não processamos remoções; apenas evita crash se o sistema chamar.
     try {
-      // no-op
+      Log.d("OCNotifListener", "onNotificationRemoved")
     } catch (t: Throwable) {
-      Log.e(TAG, "onNotificationRemoved falhou", t)
+      Log.e("OCNotifListener", "onNotificationRemoved failed", t)
     }
   }
 
-  private fun processNotificationPosted(sbn: StatusBarNotification?) {
-    if (sbn == null) return
-
-    val context = try {
-      applicationContext
-    } catch (_: Throwable) {
-      return
-    } ?: return
-
-    // Captura desativada no app: sair imediatamente (mesmo com permissão Android).
-    if (!NotificationDraftStore.isCaptureEnabled(context)) {
-      return
-    }
-
-    val pacote = try {
-      sbn.packageName
-    } catch (_: Throwable) {
-      null
-    }
-    if (pacote.isNullOrBlank()) return
-
-    // Ignora notificações do próprio app
-    val meuPacote = try {
-      context.packageName
-    } catch (_: Throwable) {
-      null
-    }
-    if (meuPacote != null && pacote == meuPacote) {
-      return
-    }
-
-    val notification = try {
-      sbn.notification
+  override fun onDestroy() {
+    try {
+      Log.d("OCNotifListener", "onDestroy")
+      super.onDestroy()
     } catch (t: Throwable) {
-      Log.w(TAG, "Falha ao ler notification de $pacote", t)
-      null
-    } ?: return
-
-    val extras = try {
-      notification.extras
-    } catch (t: Throwable) {
-      Log.w(TAG, "Falha ao ler extras de $pacote", t)
-      null
+      Log.e("OCNotifListener", "onDestroy failed", t)
     }
-
-    val titulo = safeExtraText(extras, Notification.EXTRA_TITLE).ifBlank { null }
-    val texto = safeExtraText(extras, Notification.EXTRA_TEXT)
-    val bigText = safeExtraText(extras, Notification.EXTRA_BIG_TEXT)
-
-    val textoUtil = when {
-      bigText.isNotBlank() && (texto.isBlank() || bigText.contains(texto)) -> bigText
-      texto.isNotBlank() && bigText.isNotBlank() -> {
-        val joined = "$texto $bigText"
-        if (joined.length > 800) joined.take(800) else joined
-      }
-      texto.isNotBlank() -> texto
-      bigText.isNotBlank() -> bigText
-      else -> ""
-    }
-
-    val combinado = NotificationDraftStore.sanitizeText(
-      listOfNotNull(titulo, textoUtil.ifBlank { null }).joinToString(" ")
-    )
-    if (combinado.isBlank()) return
-
-    val textoNorm = normalize(combinado)
-
-    if (temSinaisIgnorar(textoNorm)) return
-    if (!temSinaisTransacao(textoNorm)) return
-
-    val appOrigem = resolverNomeApp(pacote)
-    val pacotesPermitidos = NotificationDraftStore.getPacotesPermitidos(context)
-    val aliases = NotificationDraftStore.getAliasesBancarios(context)
-    val modoAprendizado = NotificationDraftStore.isModoAprendizado(context)
-
-    val pacoteLower = pacote.lowercase()
-    val pacoteConhecido = pacotesPermitidos.contains(pacoteLower)
-    val aliasMatch = aliases.any { alias ->
-      alias.isNotBlank() && (
-        textoNorm.contains(alias) ||
-          normalize(appOrigem ?: "").contains(alias) ||
-          normalize(titulo ?: "").contains(alias)
-        )
-    }
-
-    val permitido = when {
-      pacoteConhecido -> true
-      aliasMatch -> true
-      pacotesPermitidos.isEmpty() && modoAprendizado -> true
-      modoAprendizado -> true
-      else -> false
-    }
-    if (!permitido) return
-
-    val textoParaSalvar = when {
-      textoUtil.isNotBlank() -> textoUtil
-      else -> combinado
-    }
-
-    val whenMs = try {
-      val post = sbn.postTime
-      if (post > 0L) post else System.currentTimeMillis()
-    } catch (_: Throwable) {
-      System.currentTimeMillis()
-    }
-
-    NotificationDraftStore.tryAddDraft(
-      context = context,
-      pacoteOrigem = pacote,
-      appOrigem = appOrigem,
-      titulo = titulo,
-      textoSanitizado = textoParaSalvar,
-      recebidoEmMillis = whenMs,
-    )
   }
 
-  private fun safeExtraText(extras: Bundle?, key: String): String {
-    if (extras == null) return ""
+  private fun readExtra(extras: Bundle?, key: String, maxLength: Int): String {
     return try {
-      val value = extras.get(key)
-      val raw = when (value) {
-        null -> ""
-        is CharSequence -> value.toString()
-        else -> value.toString()
-      }
-      NotificationDraftStore.sanitizeText(raw)
+      extras?.getCharSequence(key)?.toString().orEmpty().sanitize(maxLength)
     } catch (t: Throwable) {
-      Log.w(TAG, "Falha ao ler extra $key", t)
+      Log.w("OCNotifListener", "Could not read notification extra=$key", t)
       ""
     }
   }
 
-  private fun resolverNomeApp(packageName: String): String? {
+  private fun String.sanitize(maxLength: Int): String {
+    return replace(Regex("[\\p{Cc}\\p{Zl}\\p{Zp}]+"), " ")
+      .replace(Regex("\\s+"), " ")
+      .trim()
+      .take(maxLength)
+  }
+
+  private fun normalizeForFilter(value: String): String {
     return try {
-      val pm = packageManager ?: return null
-      val info = if (Build.VERSION.SDK_INT >= 33) {
-        pm.getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0))
-      } else {
-        @Suppress("DEPRECATION")
-        pm.getApplicationInfo(packageName, 0)
+      Normalizer.normalize(value, Normalizer.Form.NFD)
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase(Locale.ROOT)
+    } catch (_: Throwable) {
+      value.lowercase(Locale.ROOT)
+    }
+  }
+
+  private fun readAllowedPackages(prefs: android.content.SharedPreferences): Set<String> {
+    return try {
+      val raw = prefs.getString("pacotes_permitidos", "[]") ?: "[]"
+      val arr = JSONArray(raw)
+      buildSet {
+        for (index in 0 until arr.length()) {
+          val value = arr.optString(index).trim().lowercase(Locale.ROOT)
+          if (value.isNotEmpty()) add(value)
+        }
       }
-      pm.getApplicationLabel(info)?.toString()
-    } catch (_: Throwable) {
-      null
+    } catch (t: Throwable) {
+      Log.e("OCNotifListener", "failed to read allowed packages", t)
+      emptySet()
     }
   }
 
-  private fun normalize(texto: String): String {
-    return try {
-      texto
-        .lowercase(LocalePt)
-        .replace('à', 'a').replace('á', 'a').replace('â', 'a').replace('ã', 'a').replace('ä', 'a')
-        .replace('è', 'e').replace('é', 'e').replace('ê', 'e').replace('ë', 'e')
-        .replace('ì', 'i').replace('í', 'i').replace('î', 'i').replace('ï', 'i')
-        .replace('ò', 'o').replace('ó', 'o').replace('ô', 'o').replace('õ', 'o').replace('ö', 'o')
-        .replace('ù', 'u').replace('ú', 'u').replace('û', 'u').replace('ü', 'u')
-        .replace('ç', 'c')
+  private fun saveNotificationDraft(
+    pacote: String,
+    titulo: String,
+    texto: String,
+    bigText: String,
+    subText: String,
+    titleBig: String,
+    postTimeMillis: Long,
+    detectedValue: String,
+    normalizedContent: String,
+  ) {
+    val now = System.currentTimeMillis()
+    val prefs = applicationContext.getSharedPreferences(
+      "organizecontas_notification_capture",
+      Context.MODE_PRIVATE,
+    )
+
+    val current = try {
+      JSONArray(prefs.getString("drafts", "[]") ?: "[]")
     } catch (_: Throwable) {
-      try {
-        texto.lowercase()
-      } catch (_: Throwable) {
-        texto
+      JSONArray()
+    }
+
+    val formatter = SimpleDateFormat(
+      "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+      Locale.US,
+    ).apply {
+      timeZone = TimeZone.getTimeZone("UTC")
+    }
+    val recebidoEm = formatter.format(Date(postTimeMillis))
+    val criadoEm = formatter.format(Date(now))
+
+    val mensagemOriginal = listOf(titulo, texto, bigText)
+      .filter { it.isNotBlank() }
+      .distinct()
+      .joinToString("\n")
+      .take(1_700)
+
+    val normalizedTitle = normalizeForFilter(titulo).sanitize(200)
+    val dedupeKey =
+      "$pacote|$detectedValue|$normalizedTitle|$normalizedContent|${postTimeMillis / 60_000L}"
+    for (index in 0 until current.length()) {
+      if (current.optJSONObject(index)?.optString("dedupeKey") == dedupeKey) {
+        Log.d("OCNotifListener", "duplicate notification ignored package=$pacote")
+        return
       }
     }
-  }
 
-  private fun temSinaisIgnorar(textoNorm: String): Boolean {
-    return try {
-      val critico = listOf(
-        "codigo", "token", "otp", "senha", "login",
-        "verificacao", "nao compartilhe", "security code", "codigo de seguranca",
-      )
-      if (critico.any { textoNorm.contains(it) }) {
-        return true
+    val sourceInfo = when {
+      pacote.equals("com.picpay", ignoreCase = true) -> "PicPay" to "PicPay"
+      pacote.equals("com.mercadopago.wallet", ignoreCase = true) ->
+        "Mercado Pago" to "Mercado Pago"
+      pacote.equals("com.nu.production", ignoreCase = true) -> "Nubank" to "Nubank"
+      pacote.equals("com.itau", ignoreCase = true) ||
+        pacote.equals("com.itau.iti", ignoreCase = true) -> "Itaú" to "Itaú"
+      pacote.equals("com.bradesco", ignoreCase = true) -> "Bradesco" to "Bradesco"
+      pacote.equals("com.santander.app", ignoreCase = true) -> "Santander" to "Santander"
+      pacote.equals("br.com.bb.android", ignoreCase = true) ->
+        "Banco do Brasil" to "Banco do Brasil"
+      pacote.equals("br.com.intermedium", ignoreCase = true) -> "Inter" to "Inter"
+      pacote.equals("com.c6bank.app", ignoreCase = true) -> "C6 Bank" to "C6 Bank"
+      pacote.equals("br.gov.caixa.tem", ignoreCase = true) ||
+        pacote.equals("br.gov.caixa.superapp", ignoreCase = true) -> "Caixa" to "Caixa"
+      pacote.equals("br.com.neon", ignoreCase = true) -> "Neon" to "Neon"
+      pacote.equals("br.com.sicredimobi.smart", ignoreCase = true) ||
+        pacote.equals("br.com.sicredi.app", ignoreCase = true) -> "Sicredi" to "Sicredi"
+      pacote.equals("br.com.sicoobnet", ignoreCase = true) -> "Sicoob" to "Sicoob"
+      pacote.equals("br.livetouch.safra.net", ignoreCase = true) -> "Safra" to "Safra"
+      pacote.equals("io.cloudwalk.infinitepaydash", ignoreCase = true) ->
+        "InfinitePay" to "InfinitePay"
+      else -> pacote to null
+    }
+
+    val draft = JSONObject().apply {
+      put("id", "notification-$postTimeMillis-${System.nanoTime()}")
+      put("status", "pendente")
+      put("origem", "notification_listener")
+      put("pacote", pacote)
+      put("pacoteOrigem", pacote)
+      put("appName", sourceInfo.first)
+      put("appOrigem", sourceInfo.first)
+      put("bancoInferido", sourceInfo.second ?: JSONObject.NULL)
+      put("titulo", titulo)
+      put("texto", texto)
+      put("textoSanitizado", mensagemOriginal)
+      put("bigText", bigText)
+      put("subText", subText)
+      put("titleBig", titleBig)
+      put("mensagemOriginal", mensagemOriginal)
+      put("recebidoEm", recebidoEm)
+      put("postTime", recebidoEm)
+      put("postTimeMillis", postTimeMillis)
+      put("timestamp", postTimeMillis)
+      put("preLancamento", JSONObject.NULL)
+      put("dedupeKey", dedupeKey)
+      put("createdAt", criadoEm)
+      put("criadoEm", criadoEm)
+    }
+
+    val next = JSONArray().apply {
+      put(draft)
+      for (index in 0 until current.length()) {
+        if (length() >= 30) break
+        put(current.opt(index))
       }
-
-      val promo = listOf(
-        "promocao", "propaganda", "oferta imperdivel", "abra o app para",
-      )
-      val temPromo = promo.any { textoNorm.contains(it) }
-      if (!temPromo) return false
-
-      val temValor = textoNorm.contains("r$") || textoNorm.contains("rs ") ||
-        textoNorm.contains(Regex("""\d+,\d{2}"""))
-      !temValor
-    } catch (_: Throwable) {
-      // Em dúvida, ignorar (não processar)
-      true
     }
-  }
 
-  private fun temSinaisTransacao(textoNorm: String): Boolean {
-    return try {
-      val temValor = textoNorm.contains("r$") ||
-        textoNorm.contains("rs ") ||
-        Regex("""\d{1,3}(?:\.\d{3})*,\d{2}""").containsMatchIn(textoNorm)
-      if (!temValor) return false
+    val saved = prefs.edit()
+      .putString("drafts", next.toString())
+      .commit()
 
-      val sinais = listOf(
-        "compra", "aprovad", "cartao", "card",
-        "credito", "debito", "pix",
-        "pagamento", "transferencia",
-        "recebido", "enviado", "pagou", "pagamos",
-      )
-      sinais.any { textoNorm.contains(it) }
-    } catch (_: Throwable) {
-      false
-    }
-  }
-
-  companion object {
-    private const val TAG = "NotificationCapture"
-    private val LocalePt = java.util.Locale("pt", "BR")
+    Log.d(
+      "OCNotifListener",
+      "notification draft saved=$saved package=$pacote count=${next.length()}",
+    )
   }
 }

@@ -3,7 +3,7 @@
 > **Referência principal do estado atual do produto**: o que o app faz hoje, padrão visual/UX, decisões de arquitetura e produto, backlog futuro e informações de build/deploy.
 > Complementa `docs/PROJECT_STRUCTURE.md` (arquitetura detalhada — fonte de verdade técnica), `docs/AI_DEVELOPMENT_RULES.md` (regras para agentes) e `docs/CHANGELOG_STRUCTURE.md` (histórico de mudanças estruturais).
 >
-> Última atualização: 28/07/2026.
+> Última atualização: 30/07/2026.
 
 ---
 
@@ -18,7 +18,7 @@ Aplicativo mobile (Android, React Native/Expo) de **controle de contas pessoais*
 - **Login / cadastro / organização compartilhada** (`Login`, `Register`, `ModalShareOrganization`; sessão local via AsyncStorage).
 - **Cadastro de contas** (despesas) com cartão, categoria/subcategoria, vencimento e valor (`Modal_Nova_Conta`).
 - **Importar mensagem bancária** (MVP) — cola texto de SMS/notificação na Central de Controle; parser **local** sugere pré-lançamento; usuário revisa e salva pelo fluxo atual. Sem SMS automático; texto bruto não vai ao servidor nem é persistido.
-- **Lançamentos detectados** (experimental Android) — captura opcional via `NotificationListenerService` (desativada por padrão). Exige permissão manual de acesso a notificações no Android. Cria só **rascunhos locais** no aparelho; usuário revisa e salva pelo mesmo fluxo de importação → `Modal_Nova_Conta`. **Não** lê SMS, **não** envia texto ao backend, **não** cria conta automaticamente.
+- **Lançamentos detectados** (experimental Android) — captura opcional via `NotificationListenerService` (desativada por padrão). Exige permissão manual de acesso a notificações no Android. Em APK instalado manualmente, o Android pode exigir **“Permitir configurações restritas”**. Cria só **rascunhos locais** no aparelho e **somente de bancos/cartões cadastrados** (allowlist dinâmica por pacote). Usuário revisa e salva pelo mesmo fluxo de importação → `Modal_Nova_Conta`. Categoria continua obrigatória/manual. **Não** lê SMS, **não** envia texto ao backend, **não** cria conta automaticamente.
 - **Contas a Pagar** — relatório de pendentes do mês (eixo vencimento).
 - **Contas Pagas** — relatório de pagas do mês (eixo vencimento).
 - **Cartão de crédito** — com dia de fechamento (`dia_util`), dia de vencimento e limite; **competência financeira**: compra até o fechamento entra na fatura corrente; se dia de vencimento > dia de fechamento a fatura é paga no mesmo mês, senão no mês seguinte.
@@ -158,20 +158,21 @@ Funcionalidades registradas para versões futuras — **nenhuma delas deve ser i
 - Histórico de faturas;
 - Notificações inteligentes;
 - Share intent (compartilhar texto do Android para o app) para importar mensagem;
-- Preencher pacotes reais de apps bancários no catálogo de captura (aprendidos no teste);
+- Validar na prática pacotes bancários preparados (Nubank, Itaú, etc.) com notificação real;
+- Separar “modo aprendizado” em lista/diagnóstico própria (hoje o toggle não libera rascunhos fora da allowlist);
 - Sugestão automática de categoria a partir da mensagem;
 - Outras melhorias funcionais futuras.
 
-> **Nota (28/07/2026)**: a captura experimental de notificações Android (Notification Listener) foi implementada como opt-in local. Detecção por SMS **permanece fora de escopo**.
+> **Nota (30/07/2026)**: captura experimental Android (Notification Listener) é opt-in local. Salva rascunhos **somente** se o pacote da notificação estiver na allowlist montada a partir dos cartões cadastrados (`montarPacotesPermitidosPorCartoes` → SharedPreferences `pacotes_permitidos`) **e** a notificação passar no filtro financeiro leve. PicPay e Mercado Pago validados em teste real; InfinitePay entra na allowlist com cartão cadastrado, mas só gera rascunho se a notificação parecer gasto; demais pacotes do catálogo são base preparada. Detecção por SMS **permanece fora de escopo**.
 
 ---
 
 ## 7. Build, versão e deploy
 
 - **APK Android gerado via EAS Build**; perfil de referência: **`production-apk`** (APK, distribuição interna, API de produção).
-- **Versão atual**: `1.0.8` (`app.json` → `expo.version`), **`versionCode` 10** (`expo.android.versionCode`).
+- **Versão atual**: `1.0.8` (`app.json` → `expo.version`), **`versionCode` 18** (`expo.android.versionCode`).
 - **API de produção**: `https://api-contas.srv-jvt.com` (definida nos perfis do `eas.json`; dev usa `.env` → `EXPO_PUBLIC_API_URL`).
-- O **backend não foi atualizado** no build 1.0.8 — as mudanças recentes foram exclusivamente mobile/UI.
+- O **backend não foi atualizado** no build da captura experimental (versionCode 18) — mudanças exclusivamente mobile/módulo nativo local.
 - Deploy do backend no VPS: ver `api-contas-a-pagar/DEPLOY_VPS.md` (PM2 `contas-api`, porta 3100, PostgreSQL via variáveis `PG*`). Não expor tokens, segredos ou credenciais em documentação ou código.
 
 ---

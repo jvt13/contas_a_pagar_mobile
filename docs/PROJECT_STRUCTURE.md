@@ -139,7 +139,7 @@ controle_contas/
 - **Impacto de alteração**: Builds Android; captura experimental.
 
 #### `modules/notification-capture/`
-- **Responsabilidade**: Módulo Expo local Android: `NotificationListenerService` + ponte JS (`NotificationCapture`) + SharedPreferences para rascunhos. Dependência `file:./modules/notification-capture` no `package.json`.
+- **Responsabilidade**: Módulo Expo local Android: `NotificationListenerService` + ponte JS (`NotificationCapture`) + SharedPreferences para rascunhos e allowlist (`pacotes_permitidos`). Só salva rascunho se captura ativa e pacote permitido. Dependência `file:./modules/notification-capture` no `package.json`.
 - **Impacto de alteração**: Captura experimental; exige rebuild nativo.
 
 #### `eas.json`
@@ -217,17 +217,17 @@ controle_contas/
 - **Impacto de alteração**: Prefill do modal de nova conta a partir da importação.
 
 #### `src/utils/appsBancariosNotificacao.js`
-- **Responsabilidade**: Catálogo inicial de apps bancários para captura de notificações (`pacotes[]` vazios até aprendizado; aliases).
-- **Utilizado por**: `utils/lancamentosDetectados.js`.
+- **Responsabilidade**: Catálogo inicial de apps/bancos brasileiros (pacotes + aliases) para captura de notificações. Exporta `montarPacotesPermitidosPorCartoes` / `listarBancosMonitoradosPorCartoes` (allowlist dinâmica). PicPay e Mercado Pago `validado: true`; demais preparados.
+- **Utilizado por**: `utils/lancamentosDetectados.js`, testes locais do parser/allowlist.
 
 #### `src/utils/filtrosNotificacaoBancaria.js`
 - **Responsabilidade**: Filtros JS de segurança (sinais de transação × ignorar OTP/promo). Em dúvida, rejeita.
 - **Utilizado por**: `utils/lancamentosDetectados.js`.
 
 #### `src/utils/lancamentosDetectados.js`
-- **Responsabilidade**: Orquestra captura experimental: status de permissão/ativação, sync de filtros nativos, listagem/enriquecimento com parser local, marcar importado/ignorado, limpar. Sem API.
+- **Responsabilidade**: Orquestra captura experimental: carrega cartões via `getDados('/get_cartoes')`, monta allowlist, sincroniza filtros nativos (`pacotes_permitidos`), listagem/enriquecimento com parser local, marcar importado/ignorado, limpar. Sem endpoint novo; texto não vai ao backend.
 - **Utilizado por**: `hooks/useLancamentosDetectados.js`.
-- **Dependências**: `modules/notification-capture`, `parserMensagemBancaria`, filtros/catálogo.
+- **Dependências**: `modules/notification-capture`, `services.getDados`, `parserMensagemBancaria`, filtros/catálogo.
 
 #### `src/utils/categorias.js`
 - **Responsabilidade**: Catálogo client-side de categorias: `CATEGORIAS_PADRAO` (15 ativas + 3 legadas: `fixa`, `variavel`, `renda`), `SUBCATEGORIAS_PADRAO`, `CORES_CATEGORIA`, `ICONES_CATEGORIA`, `slugifyCategoria`, `mesclarCategorias`/`mesclarSubcategorias` (custom sobrescreve padrão), `resolverCategoria`/`resolverSubcategoria` (com placeholder "desconhecida"), `formatarLabelCategoria[Completa]`, `filtrarCategorias`/`filtrarSubcategorias`, `isCategoriaRaiz`.
@@ -802,6 +802,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-07-30 | Allowlist dinâmica por cartões cadastrados na captura experimental (versionCode 18) | `appsBancariosNotificacao.js`, `lancamentosDetectados.js`, `useLancamentosDetectados.js`, `LancamentosDetectados.js`, `NotificationCaptureService.kt`, `NotificationCaptureModule.kt`, `modules/notification-capture/index.js`, `parserMensagemBancaria.js`, `app.json`, `.easignore`, docs |
 | 2026-07-28 | Captura experimental Android de notificações → rascunhos locais | `modules/notification-capture/`, `plugins/withNotificationListener.js`, `LancamentosDetectados.js`, `useLancamentosDetectados.js`, utils de filtro/catálogo, `App.js`, `MenuHeader`, `ModalConfig`, `ModalImportarMensagem`, `app.json`, `package.json`, docs |
 | 2026-07-19 | Importar mensagem bancária (MVP — texto colado, parser local) | `parserMensagemBancaria.js`, `mapPreLancamentoParaInitialValues.js`, `ModalImportarMensagem.js`, `ModalConfig.js`, `modal-insert.js`, `useNovaConta.js`, `AppContent.js`, docs |
 | 2026-07-19 | Criação de `docs/APP_OVERVIEW.md` (visão geral do produto) + consolidação da documentação | `docs/APP_OVERVIEW.md`, `docs/PROJECT_STRUCTURE.md`, `docs/CHANGELOG_STRUCTURE.md`, `docs/AI_DEVELOPMENT_RULES.md` |
