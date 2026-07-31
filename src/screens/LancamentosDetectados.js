@@ -8,7 +8,6 @@ import {
   Alert,
   TouchableOpacity,
   Platform,
-  Switch,
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
@@ -108,14 +107,12 @@ export default function LancamentosDetectados() {
     pendentes,
     loading,
     status,
-    modoAprendizado,
     bancosMonitorados,
     pacotesPermitidos,
     recarregar,
     ativar,
     desativar,
     abrirPermissaoAndroid,
-    alternarModoAprendizado,
     ignorar,
     excluir,
     limpar,
@@ -335,20 +332,14 @@ export default function LancamentosDetectados() {
             </Text>
           </View>
 
-          <View style={styles.switchLinha}>
+          <View style={styles.infoFuturoLinha}>
             <View style={styles.switchTexto}>
               <Text style={styles.switchTitulo}>Modo aprendizado</Text>
               <Text style={styles.switchSub}>
-                Mantido para diagnóstico futuro. Nesta versão não libera rascunhos fora dos cartões
-                cadastrados.
+                Será usado em versão futura para listar notificações ignoradas e ajudar a mapear
+                novos bancos. Nesta versão, não libera rascunhos fora dos cartões cadastrados.
               </Text>
             </View>
-            <Switch
-              value={modoAprendizado}
-              onValueChange={alternarModoAprendizado}
-              trackColor={{ false: '#D9E4F2', true: '#A8C5F5' }}
-              thumbColor={modoAprendizado ? '#1E4DB7' : '#f4f3f4'}
-            />
           </View>
 
           <View style={styles.configAcoes}>
@@ -542,6 +533,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginTop: 8,
+    marginBottom: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E3EBF5',
+  },
+  infoFuturoLinha: {
     marginTop: 8,
     marginBottom: 12,
     paddingTop: 10,

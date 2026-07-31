@@ -92,48 +92,90 @@ class NotificationCaptureService : NotificationListenerService() {
         .joinToString(" ")
 
       val normalizedText = normalizeForFilter(notificationText)
-      val hasCurrency = Regex("""r\$\s*\d""", RegexOption.IGNORE_CASE)
-        .containsMatchIn(notificationText)
-      val transactionSignals = listOf(
-        "compra",
-        "comprou",
-        "pagou",
-        "aprovada",
-        "aprovado",
-        "debito",
-        "credito",
-        "cartao",
-        "pix",
-        "pagamento",
-        "fatura",
-      )
-      val hasTransactionSignal = transactionSignals.any { normalizedText.contains(it) }
-      val promotionalSignals = listOf(
-        "negocie cripto",
-        "cripto",
+
+      // Propaganda/marketing/loteria: descartar mesmo com R$ (ex.: "R$ 1 mil", Lotofácil).
+      val hardBlockPromo = listOf(
+        "concorra",
+        "premio",
+        "premios",
         "promocao",
         "oferta",
+        "ganhe",
+        "recarregue",
+        "recarga pode",
+        "sorteio",
         "cashback disponivel",
         "invista",
-        "renda",
+        "investimento",
+        "cripto",
+        "negocie cripto",
         "emprestimo",
         "limite aprovado",
+        "cartao transporte",
+        "sem pagar mais nada",
+        "todas as semanas",
+        "lotofacil",
+        "loteria",
+        "pague com saldo ou cartao",
       )
-      val hasPromotionalSignal = promotionalSignals.any { normalizedText.contains(it) }
-      val hasConcreteTransaction = listOf(
-        "compra",
-        "comprou",
-        "pagou",
-        "pagamento",
-      ).any { normalizedText.contains(it) }
-
-      if (!hasCurrency || !hasTransactionSignal) {
-        Log.d("OCNotifListener", "notification ignored by light filter package=$pacote")
+      if (hardBlockPromo.any { normalizedText.contains(it) }) {
+        Log.d("OCNotifListener", "promotional/lottery notification ignored package=$pacote")
         return
       }
 
-      if (hasPromotionalSignal && !hasConcreteTransaction) {
-        Log.d("OCNotifListener", "promotional notification ignored package=$pacote")
+      // PIX recebido = entrada/receita — fora do escopo de despesas nesta versão.
+      val pixReceivedSignals = listOf(
+        "pix recebido",
+        "voce recebeu um pix",
+        "voce acaba de receber um pix",
+        "acaba de receber um pix",
+        "receber um pix",
+        "recebeu pix",
+        "valor recebido",
+      )
+      val pixOutboundSignals = listOf(
+        "pix enviado",
+        "pix realizado",
+        "pix pago",
+        "voce pagou com pix",
+        "pagamento pix realizado",
+        "pagamento via pix",
+      )
+      val isPixReceived = pixReceivedSignals.any { normalizedText.contains(it) }
+      val isPixOutbound = pixOutboundSignals.any { normalizedText.contains(it) }
+      if (isPixReceived && !isPixOutbound) {
+        Log.d("OCNotifListener", "inbound PIX ignored as expense package=$pacote")
+        return
+      }
+
+      val hasCurrency = Regex("""r\$\s*\d""", RegexOption.IGNORE_CASE)
+        .containsMatchIn(notificationText)
+
+      // Exige evento transacional concluído (não basta R$/cartão/pix genérico).
+      val strongExpensePatterns = listOf(
+        Regex("""compra\s+no\s+debito\s+aprovad"""),
+        Regex("""compra\s+no\s+credito\s+aprovad"""),
+        Regex("""compra\s+aprovad"""),
+        Regex("""compra\s+de\s+r\$"""),
+        Regex("""voce\s+pagou\s+r\$"""),
+        Regex("""pagamento\s+aprovado"""),
+        Regex("""pagamento\s+realizado"""),
+        Regex("""debito\s+aprovad"""),
+        Regex("""credito\s+aprovad"""),
+        Regex("""pix\s+enviado"""),
+        Regex("""pix\s+realizado"""),
+        Regex("""pix\s+pago"""),
+        Regex("""voce\s+pagou\s+com\s+pix"""),
+        Regex("""pagamento\s+pix\s+realizado"""),
+        Regex("""pagamento\s+via\s+pix"""),
+        Regex("""transacao\s+aprovad"""),
+        Regex("""autorizacao\s+aprovad"""),
+        Regex("""foi\s+aprovad"""),
+      )
+      val hasStrongExpenseEvent = strongExpensePatterns.any { it.containsMatchIn(normalizedText) }
+
+      if (!hasCurrency || !hasStrongExpenseEvent) {
+        Log.d("OCNotifListener", "notification ignored — no strong expense event package=$pacote")
         return
       }
 

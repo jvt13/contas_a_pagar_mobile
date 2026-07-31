@@ -150,4 +150,37 @@ assert.equal(avisoMercadoPago.transacao.valor, null);
 assert.equal(avisoMercadoPago.confianca.nivel, 'revisar');
 assert.equal(avisoMercadoPago.confianca.camposFaltantes.includes('valor'), true);
 
-console.log('Allowlist + parser PicPay/Mercado Pago: 12 cenários aprovados.');
+const promoRecarga = parseMensagemBancaria(
+  'Sua recarga pode te dar prêmios 💰\n' +
+    'Recarregue seu cartão transporte e concorra até R$ 1 mil todas as semanas, sem pagar mais nada por isso!',
+  { pacote: 'com.picpay', bancoInferido: 'PicPay', recebidoEm }
+);
+assert.notEqual(promoRecarga.transacao.tipo, 'compra');
+assert.notEqual(promoRecarga.confianca.nivel, 'boa');
+assert.equal(promoRecarga.transacao.valor, null);
+assert.notEqual(promoRecarga.transacao.descricao, 'Compra cartão PicPay');
+assert.equal(promoRecarga.confianca.nivel, 'baixa');
+
+const promoLoteria = parseMensagemBancaria(
+  'Lotofacil no PicPay hoje!\n' +
+    'Concorra a R$ 8.000.000 sem sair de casa. Pague com saldo ou cartão.',
+  { pacote: 'com.picpay', bancoInferido: 'PicPay', recebidoEm }
+);
+assert.notEqual(promoLoteria.transacao.tipo, 'compra');
+assert.notEqual(promoLoteria.confianca.nivel, 'boa');
+assert.equal(promoLoteria.transacao.valor, null);
+assert.notEqual(promoLoteria.transacao.descricao, 'Compra cartão PicPay');
+assert.equal(promoLoteria.confianca.nivel, 'baixa');
+
+const pixRecebido = parseMensagemBancaria(
+  'Você acaba de receber um PIX!\n' +
+    'PIX recebido em 31/07/2026 às 12:40 no valor de R$ 2,00.',
+  { pacote: 'com.santander.app', bancoInferido: 'Santander', recebidoEm }
+);
+assert.notEqual(pixRecebido.transacao.tipo, 'compra');
+assert.notEqual(pixRecebido.transacao.tipo, 'pix');
+assert.notEqual(pixRecebido.confianca.nivel, 'boa');
+assert.equal(pixRecebido.transacao.valor, null);
+assert.equal(pixRecebido.confianca.nivel, 'baixa');
+
+console.log('Allowlist + parser + anti-falso-positivo: 15 cenários aprovados.');

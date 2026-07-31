@@ -159,20 +159,20 @@ Funcionalidades registradas para versões futuras — **nenhuma delas deve ser i
 - Notificações inteligentes;
 - Share intent (compartilhar texto do Android para o app) para importar mensagem;
 - Validar na prática pacotes bancários preparados (Nubank, Itaú, etc.) com notificação real;
-- Separar “modo aprendizado” em lista/diagnóstico própria (hoje o toggle não libera rascunhos fora da allowlist);
+- Separar “modo aprendizado” em lista/diagnóstico própria de notificações ignoradas (hoje só texto informativo na UI);
 - Sugestão automática de categoria a partir da mensagem;
 - Outras melhorias funcionais futuras.
 
-> **Nota (30/07/2026)**: captura experimental Android (Notification Listener) é opt-in local. Salva rascunhos **somente** se o pacote da notificação estiver na allowlist montada a partir dos cartões cadastrados (`montarPacotesPermitidosPorCartoes` → SharedPreferences `pacotes_permitidos`) **e** a notificação passar no filtro financeiro leve. PicPay e Mercado Pago validados em teste real; InfinitePay entra na allowlist com cartão cadastrado, mas só gera rascunho se a notificação parecer gasto; demais pacotes do catálogo são base preparada. Detecção por SMS **permanece fora de escopo**.
+> **Nota (31/07/2026)**: captura experimental Android (Notification Listener) é opt-in local. Salva rascunhos **somente** se o pacote estiver na allowlist dos cartões cadastrados **e** a notificação tiver evento transacional de despesa concluído (não basta R$/“cartão”/“pix”). Propaganda, loteria, recarga/prêmios e **PIX recebido** são ignorados. PicPay e Mercado Pago compras reais validados. “Modo aprendizado” é informativo (sem toggle) até haver lista separada de diagnóstico. Detecção por SMS **permanece fora de escopo**.
 
 ---
 
 ## 7. Build, versão e deploy
 
 - **APK Android gerado via EAS Build**; perfil de referência: **`production-apk`** (APK, distribuição interna, API de produção).
-- **Versão atual**: `1.0.8` (`app.json` → `expo.version`), **`versionCode` 18** (`expo.android.versionCode`).
+- **Versão atual**: `1.0.8` (`app.json` → `expo.version`), **`versionCode` 19** (`expo.android.versionCode`).
 - **API de produção**: `https://api-contas.srv-jvt.com` (definida nos perfis do `eas.json`; dev usa `.env` → `EXPO_PUBLIC_API_URL`).
-- O **backend não foi atualizado** no build da captura experimental (versionCode 18) — mudanças exclusivamente mobile/módulo nativo local.
+- O **backend não foi atualizado** no build da captura experimental (versionCode 19) — mudanças exclusivamente mobile/módulo nativo local.
 - Deploy do backend no VPS: ver `api-contas-a-pagar/DEPLOY_VPS.md` (PM2 `contas-api`, porta 3100, PostgreSQL via variáveis `PG*`). Não expor tokens, segredos ou credenciais em documentação ou código.
 
 ---

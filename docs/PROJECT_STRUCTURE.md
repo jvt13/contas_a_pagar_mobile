@@ -802,6 +802,7 @@ Dependências transversais (consumidas por quase tudo):
 
 | Data | Alteração Estrutural | Arquivos Impactados |
 | ---- | -------------------- | ------------------- |
+| 2026-07-31 | Filtro anti-falso-positivo (promo/loteria/PIX recebido) + UI modo aprendizado informativo (versionCode 19) | `NotificationCaptureService.kt`, `filtrosNotificacaoBancaria.js`, `parserMensagemBancaria.js`, `LancamentosDetectados.js`, `useLancamentosDetectados.js`, `app.json`, docs |
 | 2026-07-30 | Allowlist dinâmica por cartões cadastrados na captura experimental (versionCode 18) | `appsBancariosNotificacao.js`, `lancamentosDetectados.js`, `useLancamentosDetectados.js`, `LancamentosDetectados.js`, `NotificationCaptureService.kt`, `NotificationCaptureModule.kt`, `modules/notification-capture/index.js`, `parserMensagemBancaria.js`, `app.json`, `.easignore`, docs |
 | 2026-07-28 | Captura experimental Android de notificações → rascunhos locais | `modules/notification-capture/`, `plugins/withNotificationListener.js`, `LancamentosDetectados.js`, `useLancamentosDetectados.js`, utils de filtro/catálogo, `App.js`, `MenuHeader`, `ModalConfig`, `ModalImportarMensagem`, `app.json`, `package.json`, docs |
 | 2026-07-19 | Importar mensagem bancária (MVP — texto colado, parser local) | `parserMensagemBancaria.js`, `mapPreLancamentoParaInitialValues.js`, `ModalImportarMensagem.js`, `ModalConfig.js`, `modal-insert.js`, `useNovaConta.js`, `AppContent.js`, docs |

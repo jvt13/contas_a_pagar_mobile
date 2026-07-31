@@ -52,6 +52,18 @@ Registrar aqui quando ocorrer **qualquer** um dos itens:
 
 > Entradas em ordem cronológica inversa (mais recente primeiro).
 
+### 2026-07-31 — Reduz falsos positivos na captura (versionCode 19)
+
+- **Tipo**: Mudança de convenção + alteração de módulo nativo + util/parser + UI.
+- **Descrição**: Filtro nativo/JS exige evento transacional de despesa concluído; bloqueia propaganda/loteria/recarga/prêmios e PIX recebido (receita). Parser deixa de classificar esses textos como compra/confiança Boa. “Modo aprendizado” vira texto informativo (sem toggle). Allowlist por cartões e casos PicPay/Mercado Pago reais preservados. `versionCode` 19.
+- **Arquivos impactados**:
+  - `NotificationCaptureService.kt`, `filtrosNotificacaoBancaria.js`, `parserMensagemBancaria.js` (+ testes)
+  - `LancamentosDetectados.js`, `useLancamentosDetectados.js`
+  - `app.json`, docs
+- **Endpoints afetados**: nenhum.
+- **Impacto para consumidores**: menos rascunhos indevidos; **rebuild APK/EAS** necessário.
+- **Documentação atualizada**: `APP_OVERVIEW.md` §6–7; `PROJECT_STRUCTURE.md` §14; este changelog.
+
 ### 2026-07-30 — Allowlist por cartões na captura experimental (versionCode 18)
 
 - **Tipo**: Mudança de convenção + alteração de módulo nativo + util/catálogo.

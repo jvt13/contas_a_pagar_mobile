@@ -193,10 +193,95 @@ function extrairBanco(textoNorm, textoOriginal, metadados = {}) {
   return { nome: null, slug: null, confianca: 0 };
 }
 
+function temEventoTransacionalForte(textoNorm) {
+  return (
+    /compra\s+no\s+debito\s+aprovad/.test(textoNorm) ||
+    /compra\s+no\s+credito\s+aprovad/.test(textoNorm) ||
+    /compra\s+aprovad/.test(textoNorm) ||
+    /compra\s+de\s+r\$/.test(textoNorm) ||
+    /voce\s+pagou\s+r\$/.test(textoNorm) ||
+    /pagamento\s+aprovado/.test(textoNorm) ||
+    /pagamento\s+realizado/.test(textoNorm) ||
+    /debito\s+aprovad/.test(textoNorm) ||
+    /credito\s+aprovad/.test(textoNorm) ||
+    /pix\s+(enviado|realizado|pago)/.test(textoNorm) ||
+    /voce\s+pagou\s+com\s+pix/.test(textoNorm) ||
+    /pagamento\s+(pix\s+realizado|via\s+pix)/.test(textoNorm) ||
+    /transacao\s+aprovad/.test(textoNorm) ||
+    /autorizacao\s+aprovad/.test(textoNorm) ||
+    /foi\s+aprovad/.test(textoNorm)
+  );
+}
+
+function ehPropagandaOuLoteria(textoNorm) {
+  return /concorra|premios?|recarregue|recarga pode|cartao transporte|sem pagar mais nada|ganhe\b|oferta|promocao|lotofacil|loteria|sorteio|pague com saldo ou cartao|todas as semanas/.test(
+    textoNorm
+  );
+}
+
+function ehPixRecebido(textoNorm) {
+  const recebido =
+    /pix recebido|voce recebeu um pix|voce acaba de receber um pix|acaba de receber um pix|receber um pix|recebeu pix|valor recebido/.test(
+      textoNorm
+    );
+  const saida =
+    /pix\s+(enviado|realizado|pago)|voce\s+pagou\s+com\s+pix|pagamento\s+(pix\s+realizado|via\s+pix)/.test(
+      textoNorm
+    );
+  return recebido && !saida;
+}
+
+function resultadoNaoInterpretavel(avisos = [], metadados = {}) {
+  return {
+    origem: metadados?.origem || 'mensagem_colada',
+    banco: { nome: null, slug: null, confianca: 0 },
+    transacao: {
+      tipo: 'desconhecido',
+      formaPagamento: 'desconhecida',
+      valor: null,
+      dataISO: null,
+      hora: null,
+      descricao: null,
+      estabelecimento: null,
+    },
+    sugestoes: {
+      nome: null,
+      tipo_cartao: null,
+      categoria: null,
+      subcategoria: null,
+      vencimento: null,
+      data_lancamento: null,
+      valorDisplay: null,
+      valorBackend: null,
+    },
+    confianca: {
+      score: 0,
+      nivel: 'baixa',
+      camposDetectados: [],
+      camposFaltantes: [
+        'valor',
+        'banco',
+        'data',
+        'tipo',
+        'formaPagamento',
+        'descricao',
+        'cartao',
+        'categoria',
+      ],
+      ambiguidades: [],
+    },
+    avisos: [...new Set(avisos)],
+  };
+}
+
 function extrairTipoEForma(textoNorm) {
   let tipo = 'desconhecido';
   let formaPagamento = 'desconhecida';
 
+  const temPixSaida =
+    /pix\s+(enviado|realizado|pago)|voce\s+pagou\s+com\s+pix|pagamento\s+(pix|via\s+pix)/.test(
+      textoNorm
+    );
   const temPix = /\bpix\b/.test(textoNorm);
   const temCredito =
     /cartao de credito|\bcredito\b|no credito|proxima fatura|cartao mercado pago/.test(textoNorm);
@@ -208,9 +293,16 @@ function extrairTipoEForma(textoNorm) {
   const temRecebimento = /\brecebimento\b|\brecebido\b|\brecebeu\b/.test(textoNorm);
   const temCompra = /\bcompra\b|\baprovad|\btransacao aprovada|\bpagou\b/.test(textoNorm);
 
-  if (temPix) {
+  if (temPix && temPixSaida) {
     tipo = 'pix';
     formaPagamento = 'pix';
+  } else if (temPix && temRecebimento) {
+    tipo = 'desconhecido';
+    formaPagamento = 'desconhecida';
+  } else if (temPix && !temCompra && !temPagamento) {
+    // PIX genérico sem sinal de saída/compra → não inferir despesa
+    tipo = 'desconhecido';
+    formaPagamento = 'desconhecida';
   } else if (temTransferencia) {
     tipo = 'transferencia';
     formaPagamento = 'transferencia';
@@ -598,6 +690,24 @@ export function parseMensagemBancaria(texto, metadados = {}) {
   }
 
   const textoNorm = normalizar(textoOriginal);
+
+  if (ehPixRecebido(textoNorm)) {
+    return resultadoNaoInterpretavel(
+      [
+        'Esta mensagem parece um PIX recebido (entrada). Nesta versão a captura trata apenas despesas/contas.',
+      ],
+      metadados
+    );
+  }
+
+  if (ehPropagandaOuLoteria(textoNorm) && !temEventoTransacionalForte(textoNorm)) {
+    return resultadoNaoInterpretavel(
+      [
+        'Esta mensagem parece propaganda, promoção ou loteria — não foi interpretada como despesa.',
+      ],
+      metadados
+    );
+  }
 
   const { valor, ambiguidades: ambValor } = extrairValor(textoOriginal);
   ambiguidades.push(...ambValor);

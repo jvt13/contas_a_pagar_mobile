@@ -14,9 +14,6 @@ import {
   excluirRascunho,
   limparTodosRascunhos,
   abrirConfiguracaoAcessoNotificacoes,
-  obterModoAprendizado,
-  definirModoAprendizado,
-  sincronizarConfigNativa,
 } from '../utils/lancamentosDetectados';
 
 export default function useLancamentosDetectados() {
@@ -26,7 +23,6 @@ export default function useLancamentosDetectados() {
     permissaoConcedida: false,
     capturaAtiva: false,
   });
-  const [modoAprendizado, setModoAprendizado] = useState(false);
   const [bancosMonitorados, setBancosMonitorados] = useState([]);
   const [pacotesPermitidos, setPacotesPermitidos] = useState([]);
 
@@ -40,14 +36,10 @@ export default function useLancamentosDetectados() {
     }
     setLoading(true);
     try {
-      const [resultado, modo] = await Promise.all([
-        listarRascunhosDetectados({ apenasPendentes: false }),
-        obterModoAprendizado(),
-      ]);
+      const resultado = await listarRascunhosDetectados({ apenasPendentes: false });
       setRascunhos(resultado?.rascunhos || []);
       setBancosMonitorados(resultado?.bancosMonitorados || []);
       setPacotesPermitidos(resultado?.pacotesPermitidos || []);
-      setModoAprendizado(modo);
       setStatus(obterStatusPermissao());
     } catch (error) {
       console.error('Erro ao carregar lançamentos detectados:', error);
@@ -77,15 +69,6 @@ export default function useLancamentosDetectados() {
     }, 600);
     return ok;
   }, [recarregar]);
-
-  const alternarModoAprendizado = useCallback(
-    async (valor) => {
-      await definirModoAprendizado(!!valor);
-      await sincronizarConfigNativa();
-      await recarregar();
-    },
-    [recarregar]
-  );
 
   const ignorar = useCallback(
     async (id) => {
@@ -123,14 +106,12 @@ export default function useLancamentosDetectados() {
     pendentes,
     loading,
     status,
-    modoAprendizado,
     bancosMonitorados,
     pacotesPermitidos,
     recarregar,
     ativar,
     desativar,
     abrirPermissaoAndroid,
-    alternarModoAprendizado,
     ignorar,
     excluir,
     limpar,
